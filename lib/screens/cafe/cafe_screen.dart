@@ -39,7 +39,7 @@ class CafeScreen extends ConsumerStatefulWidget {
 }
 
 class _CafeScreenState extends ConsumerState<CafeScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _coffeeSteamController;
   late AnimationController _heartbeatController;
   late Animation<double> _steamAnimation;

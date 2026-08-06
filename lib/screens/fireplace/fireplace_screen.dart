@@ -15,7 +15,7 @@ class FireplaceScreen extends ConsumerStatefulWidget {
 }
 
 class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _flameController;
   late AnimationController _candleFlickerController;
   late AnimationController _butlerReadingController;

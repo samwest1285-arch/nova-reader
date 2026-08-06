@@ -109,7 +109,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _treeSwayController;
   late AnimationController _glowController;
   late AnimationController _butlerBounceController;

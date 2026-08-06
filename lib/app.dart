@@ -4,6 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import 'theme/app_theme.dart';
 import 'providers/settings_provider.dart';
+import 'screens/home/home_screen.dart';
+import 'screens/library/library_screen.dart';
+import 'screens/reader/reader_screen.dart';
+import 'screens/scanner/scanner_screen.dart';
+import 'screens/cafe/cafe_screen.dart';
+import 'screens/fireplace/fireplace_screen.dart';
+import 'screens/converter/converter_screen.dart';
 
 /// Route names for the Nova Reader app.
 class AppRoutes {
@@ -15,6 +22,10 @@ class AppRoutes {
   static const bookDetails = '/book/:bookId';
   static const cameraImport = '/camera-import';
   static const butlerChat = '/butler-chat';
+  static const scanner = '/scanner';
+  static const converter = '/converter';
+  static const fireplace = '/fireplace';
+  static const cafe = '/cafe';
 
   // Helper methods to build paths with parameters
   static String readerPath(String bookId) => '/reader/$bookId';
@@ -49,163 +60,7 @@ class NovaReaderApp extends ConsumerWidget {
   }
 }
 
-/// Placeholder home screen widget.
-/// This will be replaced with the full home screen implementation.
-class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nova Reader'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => context.push(AppRoutes.search),
-            tooltip: 'Search books',
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => context.push(AppRoutes.settings),
-            tooltip: 'Settings',
-          ),
-        ],
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.auto_stories,
-                size: 80,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Welcome to Nova Reader',
-                style: theme.textTheme.headlineMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Your cozy reading companion',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                onPressed: () => context.push(AppRoutes.library),
-                icon: const Icon(Icons.library_books),
-                label: const Text('Go to Library'),
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: () => context.push(AppRoutes.cameraImport),
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Import from Camera'),
-              ),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: 0,
-        onDestinationSelected: (index) {
-          switch (index) {
-            case 0:
-              context.go(AppRoutes.home);
-              break;
-            case 1:
-              context.push(AppRoutes.library);
-              break;
-            case 2:
-              context.push(AppRoutes.settings);
-              break;
-          }
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.library_books_outlined),
-            selectedIcon: Icon(Icons.library_books),
-            label: 'Library',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Placeholder library screen.
-class LibraryScreen extends ConsumerWidget {
-  const LibraryScreen({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Library'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => context.push(AppRoutes.search),
-            tooltip: 'Search books',
-          ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.library_books,
-              size: 64,
-              color: theme.colorScheme.primary.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Your library is empty',
-              style: theme.textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Add books to get started',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                // TODO: Open file picker
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Add Book'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Placeholder settings screen.
+/// Settings screen.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -443,6 +298,34 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LibraryScreen(),
       ),
       GoRoute(
+        path: AppRoutes.reader,
+        name: 'reader',
+        builder: (context, state) {
+          final bookId = state.pathParameters['bookId'] ?? '';
+          return ReaderScreen(bookId: bookId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.scanner,
+        name: 'scanner',
+        builder: (context, state) => const ScannerScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.converter,
+        name: 'converter',
+        builder: (context, state) => const ConverterScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.fireplace,
+        name: 'fireplace',
+        builder: (context, state) => const FireplaceScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.cafe,
+        name: 'cafe',
+        builder: (context, state) => const CafeScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.settings,
         name: 'settings',
         builder: (context, state) => const SettingsScreen(),
@@ -454,17 +337,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           appBar: AppBar(title: const Text('Search')),
           body: const Center(child: Text('Search screen - coming soon')),
         ),
-      ),
-      GoRoute(
-        path: AppRoutes.reader,
-        name: 'reader',
-        builder: (context, state) {
-          final bookId = state.pathParameters['bookId'] ?? '';
-          return Scaffold(
-            appBar: AppBar(title: Text('Reading: $bookId')),
-            body: Center(child: Text('Reader for book $bookId - coming soon')),
-          );
-        },
       ),
       GoRoute(
         path: AppRoutes.bookDetails,
@@ -480,10 +352,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.cameraImport,
         name: 'cameraImport',
-        builder: (context, state) => Scaffold(
-          appBar: AppBar(title: const Text('Camera Import')),
-          body: const Center(child: Text('Camera import - coming soon')),
-        ),
+        builder: (context, state) => const ScannerScreen(),
       ),
       GoRoute(
         path: AppRoutes.butlerChat,
