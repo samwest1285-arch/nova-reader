@@ -19,7 +19,7 @@ class Book extends Equatable {
   final DateTime addedDate;
   final double progress;
 
-  const Book({
+  Book({
     required this.id,
     required this.title,
     required this.author,
@@ -144,7 +144,7 @@ class Highlight extends Equatable {
   final DateTime createdDate;
   final String? note;
 
-  const Highlight({
+  Highlight({
     required this.id,
     required this.text,
     this.color = '#F4D03F',

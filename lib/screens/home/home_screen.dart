@@ -5,8 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../theme/app_theme.dart';
-import '../../providers/settings_provider.dart';
-import '../../providers/book_provider.dart';
 
 /// Time-of-day background colors for the home screen.
 class _TimeOfDayColors {
@@ -663,6 +661,9 @@ class _MenuButtonState extends State<_MenuButton> {
     );
   }
 }
+
+/// Which side of the screen the trees appear on.
+enum _TreeSide { left, right }
 
 /// Paints tree silhouettes along the left and right borders.
 class _TreePainter extends CustomPainter {

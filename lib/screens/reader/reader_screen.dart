@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../theme/app_theme.dart';
 import '../../providers/book_provider.dart';
-import '../../models/book.dart';
 
 /// The EPUB reader screen with page view, controls, bookmarks, and highlights.
 class ReaderScreen extends ConsumerStatefulWidget {
@@ -36,27 +35,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     'Kapitel 5: Die Rückkehr',
   ];
   int _currentChapter = 0;
-
-  // Sample book content for demonstration
-  final List<String> _samplePages = List.generate(100, (index) {
-    final chapterIndex = (index / 20).floor().clamp(0, 4);
-    final chapter = [
-      'Kapitel 1: Der Beginn',
-      'Kapitel 2: Die Reise',
-      'Kapitel 3: Die Entdeckung',
-      'Kapitel 4: Das Geheimnis',
-      'Kapitel 5: Die Rückkehr',
-    ][chapterIndex];
-
-    return '''
-<h2>$chapter</h2>
-<p>Seite ${index + 1} von 100</p>
-<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-<p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-<p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
-<p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.</p>
-''';
-  });
 
   @override
   void initState() {
@@ -281,7 +259,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
   }
 
   Widget _buildPageContent(int pageIndex) {
-    final content = _samplePages[pageIndex];
     final hasHighlight = _highlights.any((h) => h.page == pageIndex);
 
     return Column(

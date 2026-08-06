@@ -25,7 +25,7 @@ class TreeBorderSides {
   );
 
   /// Trees only on the bottom (like a forest floor).
-  static const bottom = TreeBorderSides(bottom: true);
+  static const bottomOnly = TreeBorderSides(bottom: true);
 
   /// Trees on left and right (like a forest path).
   static const sides = TreeBorderSides(left: true, right: true);
@@ -86,7 +86,7 @@ class TreeBorderConfig {
 
   /// A light, sparse border.
   factory TreeBorderConfig.light() => const TreeBorderConfig(
-        sides: TreeBorderSides.bottom,
+        sides: TreeBorderSides.bottomOnly,
         density: 0.3,
         swaySpeed: 0.7,
         swayAmplitude: 4.0,

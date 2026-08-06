@@ -1,30 +1,28 @@
-// This is a basic Flutter widget test.
+// Basic smoke tests for the Nova Reader app.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Verifies that the app builds and renders the home screen without crashing.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:nova_reader/main.dart';
+import 'package:nova_reader/app.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('App builds and shows the home screen', (WidgetTester tester) async {
+    // Provide mock SharedPreferences so the settings provider can initialize.
+    SharedPreferences.setMockInitialValues({});
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Build our app inside a ProviderScope and trigger a frame.
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: NovaReaderApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // The home screen should render the app title.
+    expect(find.text('Nova Reader'), findsWidgets);
   });
 }

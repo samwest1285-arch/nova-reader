@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -46,7 +45,6 @@ class _CafeScreenState extends ConsumerState<CafeScreen>
   late Animation<double> _steamAnimation;
   late Animation<double> _heartAnimation;
   List<_DonationEntry> _donationHistory = [];
-  bool _isLoading = true;
 
   // PayPal.Me link
   static const String _paypalMeUrl = 'https://paypal.me/NovaReader';
@@ -100,7 +98,6 @@ class _CafeScreenState extends ConsumerState<CafeScreen>
     } catch (_) {
       // Ignore load errors
     }
-    setState(() => _isLoading = false);
   }
 
   Future<void> _saveDonationHistory() async {

@@ -835,13 +835,13 @@ class _FireplacePainter extends CustomPainter {
 
 /// A single flame particle.
 class _FlameParticle {
-  double x;
-  double y;
-  double vx;
-  double vy;
-  double size;
-  double life;
-  double maxLife;
+  late double x;
+  late double y;
+  late double vx;
+  late double vy;
+  late double size;
+  late double life;
+  late double maxLife;
   final Random _rng = Random();
 
   _FlameParticle() {

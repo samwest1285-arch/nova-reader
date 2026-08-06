@@ -154,7 +154,7 @@ class AiButlerService {
     required String book2Title,
     required String book2Description,
   }) async {
-    final query = '''
+    final prompt = '''
 Please merge the following two books into a combined summary that captures the essence of both:
 
 Book 1: "$book1Title"
@@ -172,7 +172,7 @@ Create a creative, engaging combined summary that:
 
     return query(
       mode: AiButlerMode.bookButler,
-      query: query,
+      query: prompt,
     );
   }
 
@@ -190,23 +190,23 @@ Create a creative, engaging combined summary that:
     String? favoriteBook,
     String? mood,
   }) async {
-    final query = StringBuffer('Please recommend a book for me.');
+    final prompt = StringBuffer('Please recommend a book for me.');
     if (favoriteGenre != null) {
-      query.write(' I enjoy $favoriteGenre books.');
+      prompt.write(' I enjoy $favoriteGenre books.');
     }
     if (favoriteBook != null) {
-      query.write(' I loved reading "$favoriteBook".');
+      prompt.write(' I loved reading "$favoriteBook".');
     }
     if (mood != null) {
-      query.write(" I'm in the mood for something $mood.");
+      prompt.write(" I'm in the mood for something $mood.");
     }
-    query.write(
+    prompt.write(
       ' Please provide a warm, personalized recommendation with a brief description.',
     );
 
     return query(
       mode: AiButlerMode.bookButler,
-      query: query.toString(),
+      query: prompt.toString(),
     );
   }
 

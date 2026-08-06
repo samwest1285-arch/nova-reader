@@ -147,7 +147,6 @@ class TtsService {
   // Chapter queue
   final List<TtsChapter> _chapterQueue = [];
   int _currentChapterIndex = -1;
-  int _currentSegmentIndex = 0;
 
   // Current text being spoken
   String _currentText = '';
@@ -246,7 +245,9 @@ class TtsService {
   Future<void> setVoiceProfile(VoiceProfile profile) async {
     _currentProfile = profile;
     await _flutterTts.setLanguage(profile.language);
-    await _flutterTts.setVoice(profile.voiceId);
+    if (profile.voiceId.isNotEmpty) {
+      await _flutterTts.setVoice({'name': profile.voiceId, 'locale': profile.language});
+    }
     if (profile.defaultSpeed != 1.0) {
       await setSpeed(profile.defaultSpeed);
     }
@@ -290,7 +291,6 @@ class TtsService {
   /// Speaks a list of segments, each potentially with a different voice profile.
   Future<void> speakSegments(List<TtsSegment> segments) async {
     await stop();
-    _currentSegmentIndex = 0;
     _state = TtsState.playing;
     onStateChange?.call(_state);
 
@@ -298,7 +298,6 @@ class TtsService {
       if (_state == TtsState.stopped) break;
 
       final segment = segments[i];
-      _currentSegmentIndex = i;
 
       // Apply voice profile if specified
       if (segment.voiceProfile != null) {
@@ -481,9 +480,9 @@ class TtsService {
   /// Releases the TTS resources.
   Future<void> dispose() async {
     await stop();
-    await _flutterTts.setCompletionHandler(null);
-    await _flutterTts.setProgressHandler(null);
-    await _flutterTts.setErrorHandler(null);
-    await _flutterTts.setCancelHandler(null);
+    _flutterTts.setCompletionHandler(() {});
+    _flutterTts.setProgressHandler((String text, int start, int end, String word) {});
+    _flutterTts.setErrorHandler((message) {});
+    _flutterTts.setCancelHandler(() {});
   }
 }

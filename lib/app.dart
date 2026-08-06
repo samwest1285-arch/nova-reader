@@ -212,7 +212,6 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
-    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(

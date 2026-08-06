@@ -2,8 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
-import '../models/bookmark.dart';
-
 /// Available ambient sound options.
 enum AmbientSound { none, fire, rain, wind, birds }
 

@@ -19,6 +19,7 @@ dependencies:
   # EPUB reading
   epubx: 4.0.0
   archive: ^3.6.1
+  image: ^3.3.0
 
   # Text-to-speech
   flutter_tts: ^4.0.2

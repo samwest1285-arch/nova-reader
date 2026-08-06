@@ -11,7 +11,7 @@ class Bookmark extends Equatable {
   final String color;
   final DateTime createdDate;
 
-  const Bookmark({
+  Bookmark({
     required this.id,
     required this.bookId,
     required this.page,

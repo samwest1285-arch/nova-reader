@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui' as ui;
 
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -124,7 +123,7 @@ class OcrService {
       for (final block in blocks) {
         for (final line in block.lines) {
           for (final element in line.elements) {
-            totalConfidence += element.confidence;
+            totalConfidence += element.confidence ?? 0;
             confidenceCount++;
           }
         }

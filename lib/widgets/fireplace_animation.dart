@@ -21,8 +21,7 @@ class _Spark {
     required this.life,
     required this.maxLife,
     this.size = 2.0,
-    this.brightness = 1.0,
-  });
+  }) : brightness = 1.0;
 
   bool get isAlive => life > 0;
 
