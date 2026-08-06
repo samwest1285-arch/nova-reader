@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../theme/app_theme.dart';
 import '../../providers/book_provider.dart';
+import '../../providers/epub_provider.dart';
+import '../../models/book.dart';
 
 /// The EPUB reader screen with page view, controls, bookmarks, and highlights.
 class ReaderScreen extends ConsumerStatefulWidget {
@@ -20,27 +22,17 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     with SingleTickerProviderStateMixin {
   late PageController _pageController;
   int _currentPage = 0;
-  int _totalPages = 100;
   double _fontSize = 18.0;
   bool _showControls = true;
   bool _isBookmarked = false;
   Timer? _controlsTimer;
   String _selectedText = '';
   final List<_Highlight> _highlights = [];
-  final List<String> _chapters = [
-    'Kapitel 1: Der Beginn',
-    'Kapitel 2: Die Reise',
-    'Kapitel 3: Die Entdeckung',
-    'Kapitel 4: Das Geheimnis',
-    'Kapitel 5: Die Rückkehr',
-  ];
-  int _currentChapter = 0;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: 0);
-    _loadBookProgress();
   }
 
   @override
@@ -50,24 +42,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     super.dispose();
   }
 
-  void _loadBookProgress() {
-    final book = ref.read(bookProvider.notifier).getBookById(widget.bookId);
-    if (book != null) {
-      setState(() {
-        _currentPage = book.currentPage;
-        _totalPages = book.totalPages > 0 ? book.totalPages : 100;
-        _fontSize = 18.0;
-      });
-      _pageController = PageController(initialPage: _currentPage);
-    }
-  }
-
   void _saveProgress() {
+    final epub = ref.read(epubLoaderProvider).epub;
+    final totalPages = epub?.chapters.length ?? 0;
     ref.read(bookProvider.notifier).updateProgress(
           bookId: widget.bookId,
           currentPage: _currentPage,
-          totalPages: _totalPages,
-          progress: _totalPages > 0 ? _currentPage / _totalPages : 0.0,
+          totalPages: totalPages,
+          progress: totalPages > 0 ? _currentPage / totalPages : 0.0,
         );
   }
 
@@ -76,11 +58,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
       _isBookmarked = !_isBookmarked;
     });
     if (_isBookmarked) {
+      final epub = ref.read(epubLoaderProvider).epub;
       ref.read(bookProvider.notifier).addBookmark(
             bookId: widget.bookId,
             page: _currentPage,
-            chapter: _chapters[_currentChapter],
-            text: 'Lesezeichen auf Seite ${_currentPage + 1}',
+            chapter: epub?.chapterTitle(_currentPage) ?? '',
+            text: 'Lesezeichen auf Kapitel ${_currentPage + 1}',
           );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -103,22 +86,21 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
   }
 
   void _goToChapter(int index) {
-    final targetPage = index * 20;
-    if (targetPage < _totalPages) {
+    final total = ref.read(epubLoaderProvider).epub?.chapters.length ?? 0;
+    if (index >= 0 && index < total) {
       _pageController.animateToPage(
-        targetPage,
+        index,
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
       );
-      setState(() {
-        _currentChapter = index;
-        _currentPage = targetPage;
-      });
+      setState(() => _currentPage = index);
       _saveProgress();
     }
   }
 
   void _showChapterPicker() {
+    final epub = ref.read(epubLoaderProvider).epub;
+    if (epub == null || epub.chapters.isEmpty) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: NovaColors.warmWhite,
@@ -140,32 +122,40 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                       ),
                 ),
                 const SizedBox(height: 12),
-                ...List.generate(_chapters.length, (index) {
-                  return ListTile(
-                    leading: Icon(
-                      index == _currentChapter
-                          ? Icons.bookmark
-                          : Icons.bookmark_border,
-                      color: NovaColors.warmGold,
-                    ),
-                    title: Text(
-                      _chapters[index],
-                      style: TextStyle(
-                        fontWeight: index == _currentChapter
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: NovaColors.deepBrown,
-                      ),
-                    ),
-                    trailing: index == _currentChapter
-                        ? const Icon(Icons.check, color: NovaColors.warmGold)
-                        : null,
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _goToChapter(index);
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: epub.chapters.length,
+                    itemBuilder: (context, index) {
+                      return ListTile(
+                        leading: Icon(
+                          index == _currentPage
+                              ? Icons.bookmark
+                              : Icons.bookmark_border,
+                          color: NovaColors.warmGold,
+                        ),
+                        title: Text(
+                          epub.chapterTitle(index),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: index == _currentPage
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: NovaColors.deepBrown,
+                          ),
+                        ),
+                        trailing: index == _currentPage
+                            ? const Icon(Icons.check, color: NovaColors.warmGold)
+                            : null,
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _goToChapter(index);
+                        },
+                      );
                     },
-                  );
-                }),
+                  ),
+                ),
               ],
             ),
           ),
@@ -177,96 +167,161 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final book = ref.watch(bookByIdProvider(widget.bookId));
+    final epubState = ref.watch(epubLoaderProvider);
+
+    // Trigger loading when the book is available and not yet loaded.
+    if (book != null && epubState.epub == null && !epubState.isLoading) {
+      ref.read(epubLoaderProvider.notifier).load(book);
+    }
 
     return Scaffold(
       backgroundColor: NovaColors.parchment,
-      body: GestureDetector(
-        onTap: () {
-          _showControlsTemporarily();
-        },
-        onTapDown: (details) {
-          final width = MediaQuery.of(context).size.width;
-          if (details.localPosition.dx < width * 0.3) {
-            // Tap left edge - previous page
+      body: _buildBody(theme, book, epubState),
+    );
+  }
+
+  Widget _buildBody(
+      ThemeData theme, Book? book, EpubLoadState epubState) {
+    // Loading state
+    if (epubState.isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: NovaColors.warmGold),
+      );
+    }
+
+    // Error state
+    if (epubState.error != null) {
+      return _buildErrorState(theme, epubState.error!);
+    }
+
+    // No book found
+    if (book == null) {
+      return _buildErrorState(theme, 'Buch nicht gefunden.');
+    }
+
+    final epub = epubState.epub;
+    if (epub == null || epub.chapters.isEmpty) {
+      return _buildErrorState(theme, 'Dieses Buch enthält keine lesbaren Kapitel.');
+    }
+
+    final totalPages = epub.chapters.length;
+
+    return GestureDetector(
+      onTap: () {
+        _showControlsTemporarily();
+      },
+      onTapDown: (details) {
+        final width = MediaQuery.of(context).size.width;
+        if (details.localPosition.dx < width * 0.3) {
+          if (_currentPage > 0) {
             _pageController.previousPage(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
             );
-          } else if (details.localPosition.dx > width * 0.7) {
-            // Tap right edge - next page
+          }
+        } else if (details.localPosition.dx > width * 0.7) {
+          if (_currentPage < totalPages - 1) {
             _pageController.nextPage(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
             );
           }
-        },
-        child: Stack(
-          children: [
-            // Page view
-            PageView.builder(
-              controller: _pageController,
-              onPageChanged: (page) {
-                setState(() {
-                  _currentPage = page;
-                  _currentChapter = (page / 20).floor().clamp(0, 4);
-                });
-                _saveProgress();
-              },
-              itemCount: _totalPages,
-              itemBuilder: (context, index) {
-                return SingleChildScrollView(
-                  padding: EdgeInsets.only(
-                    left: 24,
-                    right: 24,
-                    top: kToolbarHeight + 60,
-                    bottom: 100,
-                  ),
-                  child: _buildPageContent(index),
-                );
-              },
+        }
+      },
+      child: Stack(
+        children: [
+          // Page view
+          PageView.builder(
+            controller: _pageController,
+            onPageChanged: (page) {
+              setState(() => _currentPage = page);
+              _saveProgress();
+            },
+            itemCount: totalPages,
+            itemBuilder: (context, index) {
+              return SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  top: kToolbarHeight + 60,
+                  bottom: 100,
+                ),
+                child: _buildPageContent(index, epub),
+              );
+            },
+          ),
+
+          // Top bar
+          if (_showControls)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: _buildTopBar(theme, epub, totalPages),
             ),
 
-            // Top bar
-            if (_showControls)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: _buildTopBar(theme),
-              ),
+          // Bottom bar
+          if (_showControls)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: _buildBottomBar(theme, totalPages),
+            ),
 
-            // Bottom bar
-            if (_showControls)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: _buildBottomBar(theme),
-              ),
+          // Text selection toolbar
+          if (_selectedText.isNotEmpty)
+            Positioned(
+              top: 100,
+              left: 0,
+              right: 0,
+              child: _buildSelectionToolbar(theme),
+            ),
+        ],
+      ),
+    );
+  }
 
-            // Text selection toolbar
-            if (_selectedText.isNotEmpty)
-              Positioned(
-                top: 100,
-                left: 0,
-                right: 0,
-                child: _buildSelectionToolbar(theme),
+  Widget _buildErrorState(ThemeData theme, String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.menu_book,
+                size: 56, color: NovaColors.mediumBrown),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: NovaColors.deepBrown,
               ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => context.pop(),
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('Zurück zur Bibliothek'),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPageContent(int pageIndex) {
+  Widget _buildPageContent(int pageIndex, LoadedEpub epub) {
     final hasHighlight = _highlights.any((h) => h.page == pageIndex);
+    final body = epub.chapterBody(pageIndex);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Chapter title
         Text(
-          _chapters[(pageIndex / 20).floor().clamp(0, 4)],
+          epub.chapterTitle(pageIndex),
           style: TextStyle(
             fontSize: _fontSize + 6,
             fontWeight: FontWeight.bold,
@@ -277,7 +332,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
         const SizedBox(height: 8),
         // Page number
         Text(
-          'Seite ${pageIndex + 1}',
+          'Kapitel ${pageIndex + 1} von ${epub.chapters.length}',
           style: TextStyle(
             fontSize: _fontSize - 4,
             color: NovaColors.lightBrown,
@@ -287,7 +342,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
         const SizedBox(height: 16),
         // Body text
         SelectableText(
-          _getPageBody(pageIndex),
+          body.isEmpty ? 'Dieses Kapitel enthält keinen Text.' : body,
           style: TextStyle(
             fontSize: _fontSize,
             color: NovaColors.charcoal,
@@ -295,10 +350,13 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
             height: 1.6,
           ),
           onSelectionChanged: (selection, cause) {
-            if (cause == SelectionChangedCause.longPress) {
+            if (cause == SelectionChangedCause.longPress &&
+                selection.start < selection.end) {
               setState(() {
-                _selectedText = _getPageBody(pageIndex)
-                    .substring(selection.start, selection.end);
+                _selectedText = body.substring(
+                  selection.start.clamp(0, body.length),
+                  selection.end.clamp(0, body.length),
+                );
               });
             }
           },
@@ -327,14 +385,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     );
   }
 
-  String _getPageBody(int pageIndex) {
-    return 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\n'
-        'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\n'
-        'Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.\n\n'
-        'Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit.';
-  }
-
-  Widget _buildTopBar(ThemeData theme) {
+  Widget _buildTopBar(ThemeData theme, LoadedEpub epub, int totalPages) {
     return Container(
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top,
@@ -371,7 +422,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      _chapters[_currentChapter],
+                      epub.chapterTitle(_currentPage),
                       style: const TextStyle(
                         color: NovaColors.paleGold,
                         fontSize: 14,
@@ -381,7 +432,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      'Seite ${_currentPage + 1} von $_totalPages',
+                      'Kapitel ${_currentPage + 1} von $totalPages',
                       style: const TextStyle(
                         color: NovaColors.tan,
                         fontSize: 12,
@@ -407,7 +458,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     );
   }
 
-  Widget _buildBottomBar(ThemeData theme) {
+  Widget _buildBottomBar(ThemeData theme, int totalPages) {
     return Container(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).padding.bottom + 8,
@@ -444,7 +495,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
               child: Slider(
                 value: _currentPage.toDouble(),
                 min: 0,
-                max: _totalPages.toDouble() - 1,
+                max: (totalPages - 1).clamp(0, 1 << 30).toDouble(),
                 onChanged: (value) {
                   final page = value.round();
                   _pageController.animateToPage(
@@ -498,8 +549,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                   icon: const Icon(Icons.skip_previous,
                       color: NovaColors.paleGold, size: 20),
                   onPressed: () {
-                    if (_currentChapter > 0) {
-                      _goToChapter(_currentChapter - 1);
+                    if (_currentPage > 0) {
+                      _goToChapter(_currentPage - 1);
                     }
                   },
                   tooltip: 'Vorheriges Kapitel',
@@ -514,8 +565,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                   icon: const Icon(Icons.skip_next,
                       color: NovaColors.paleGold, size: 20),
                   onPressed: () {
-                    if (_currentChapter < _chapters.length - 1) {
-                      _goToChapter(_currentChapter + 1);
+                    if (_currentPage < totalPages - 1) {
+                      _goToChapter(_currentPage + 1);
                     }
                   },
                   tooltip: 'Nächstes Kapitel',
@@ -575,7 +626,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
             label: 'Kopieren',
             color: NovaColors.paleGold,
             onTap: () {
-              // In a real app, use Clipboard.setData
               setState(() => _selectedText = '');
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(

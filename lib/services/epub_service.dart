@@ -308,15 +308,17 @@ p.first {
     }
 
     final bytes = await file.readAsBytes();
-    final epubBook = await epubx.EpubReader.readBook(bytes);
+    final epubBookRef = await epubx.EpubReader.openBook(bytes);
 
-    final title = epubBook.Title ?? 'Unknown Title';
-    final author = epubBook.Author ?? 'Unknown Author';
+    final title = epubBookRef.Title ?? 'Unknown Title';
+    final author = (epubBookRef.AuthorList?.isNotEmpty ?? false)
+        ? epubBookRef.AuthorList!.join(', ')
+        : 'Unknown Author';
 
-    // Extract cover image if available
+    // Extract cover image if available (defensive: some EPUBs have no cover).
     String? coverImagePath;
     try {
-      final cover = epubBook.CoverImage;
+      final cover = await epubBookRef.readCover();
       if (cover != null) {
         final coverDir = await _getCoverDirectory();
         final coverFile = File('${coverDir.path}/${_uuid.v4()}.jpg');
@@ -332,11 +334,11 @@ p.first {
     final chapters = <EpubChapter>[];
     final contentBuffer = StringBuffer();
 
-    final chapterList = epubBook.Chapters ?? const <epubx.EpubChapter>[];
-    if (chapterList.isNotEmpty) {
-      for (final chapter in chapterList) {
-        final chapterTitle = chapter.Title ?? 'Untitled';
-        final chapterContent = _extractChapterContent(chapter);
+    final chapterRefs = await epubBookRef.getChapters();
+    if (chapterRefs.isNotEmpty) {
+      for (final chapterRef in chapterRefs) {
+        final chapterTitle = chapterRef.Title ?? 'Untitled';
+        final chapterContent = await _extractChapterContent(chapterRef);
 
         chapters.add(EpubChapter(
           title: chapterTitle,
@@ -352,7 +354,7 @@ p.first {
 
     // If no chapters found, try to get all text content
     if (chapters.isEmpty) {
-      final allText = _extractAllHtml(epubBook.Content);
+      final allText = await _extractAllHtml(epubBookRef.Content);
       if (allText.isNotEmpty) {
         chapters.add(EpubChapter(
           title: title,
@@ -372,29 +374,41 @@ p.first {
   }
 
   /// Concatenates all HTML content files in the EPUB.
-  String _extractAllHtml(epubx.EpubContent? content) {
-    if (content == null || content.Html == null) return '';
+  Future<String> _extractAllHtml(Object? content) async {
+    if (content == null) return '';
+    final html = (content as dynamic).Html as Map<String, dynamic>?;
+    if (html == null) return '';
     final buffer = StringBuffer();
-    for (final file in content.Html!.values) {
-      if (file.Content != null && file.Content!.isNotEmpty) {
-        buffer.writeln(file.Content);
+    for (final file in html.values) {
+      try {
+        final text = await (file as dynamic).readContentAsText();
+        if (text.isNotEmpty) {
+          buffer.writeln(text);
+        }
+      } catch (_) {
+        // Skip unreadable content files
       }
     }
     return buffer.toString();
   }
 
-  /// Extracts the HTML content from an EpubChapter recursively.
-  String _extractChapterContent(epubx.EpubChapter chapter) {
+  /// Extracts the HTML content from an EpubChapterRef recursively.
+  Future<String> _extractChapterContent(epubx.EpubChapterRef chapter) async {
     final buffer = StringBuffer();
 
-    if (chapter.HtmlContent != null && chapter.HtmlContent!.isNotEmpty) {
-      buffer.writeln(chapter.HtmlContent);
+    try {
+      final content = await chapter.readHtmlContent();
+      if (content.isNotEmpty) {
+        buffer.writeln(content);
+      }
+    } catch (_) {
+      // Some chapters may not have readable content
     }
 
     // Recursively extract sub-chapters
     if (chapter.SubChapters != null) {
       for (final sub in chapter.SubChapters!) {
-        final subContent = _extractChapterContent(sub);
+        final subContent = await _extractChapterContent(sub);
         if (subContent.isNotEmpty) {
           buffer.writeln(subContent);
         }

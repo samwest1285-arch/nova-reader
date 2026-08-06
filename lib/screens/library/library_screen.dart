@@ -1,8 +1,10 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../theme/app_theme.dart';
 import '../../providers/book_provider.dart';
@@ -31,6 +33,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   String _searchQuery = '';
   LibrarySort _currentSort = LibrarySort.lastRead;
   bool _showSearch = false;
+  bool _isImporting = false;
 
   @override
   void dispose() {
@@ -184,6 +187,76 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     );
   }
 
+  /// Opens the file picker, copies the selected book into app storage, and
+  /// adds it to the library.
+  Future<void> _importBook() async {
+    if (_isImporting) return;
+    setState(() => _isImporting = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['epub', 'pdf'],
+        allowMultiple: false,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      final sourcePath = file.path;
+      if (sourcePath == null) {
+        _showSnack('Datei konnte nicht gelesen werden.');
+        return;
+      }
+
+      final source = File(sourcePath);
+      if (!await source.exists()) {
+        _showSnack('Die ausgewählte Datei existiert nicht mehr.');
+        return;
+      }
+
+      // Copy the file into app storage so it survives and is stable.
+      final docs = await getApplicationDocumentsDirectory();
+      final booksDir = Directory('${docs.path}/books');
+      if (!await booksDir.exists()) {
+        await booksDir.create(recursive: true);
+      }
+      final ext = sourcePath.split('.').last.toLowerCase();
+      final destPath =
+          '${booksDir.path}/${DateTime.now().millisecondsSinceEpoch}.$ext';
+      await source.copy(destPath);
+
+      final format = ext == 'pdf' ? BookFormat.pdf : BookFormat.epub;
+
+      // Derive a title from the file name (without extension).
+      final fileName = file.name.split('.').first;
+      final title = fileName.isEmpty ? 'Unbenanntes Buch' : fileName;
+
+      await ref.read(bookProvider.notifier).addBook(
+            title: title,
+            author: 'Unbekannter Autor',
+            filePath: destPath,
+            format: format,
+          );
+
+      if (!mounted) return;
+      _showSnack('"$title" wurde zur Bibliothek hinzugefügt.');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('Import fehlgeschlagen: $e');
+    } finally {
+      if (mounted) setState(() => _isImporting = false);
+    }
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bookState = ref.watch(bookProvider);
@@ -242,16 +315,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               ? _buildEmptyState(theme)
               : _buildBookGrid(displayBooks, theme),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Open file picker to add books
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Buch hinzufügen - Dateiauswahl wird geöffnet'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
-        child: const Icon(Icons.add),
+        onPressed: _isImporting ? null : _importBook,
+        child: _isImporting
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: NovaColors.paleGold,
+                ),
+              )
+            : const Icon(Icons.add),
       ),
     );
   }
@@ -316,14 +390,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Dateiauswahl wird geöffnet...'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
+              onPressed: _isImporting ? null : _importBook,
               icon: const Icon(Icons.add),
               label: const Text('Buch hinzufügen'),
             ),
