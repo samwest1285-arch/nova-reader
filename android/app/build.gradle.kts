@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.novareader.nova_reader"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "26.3.11579264"
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

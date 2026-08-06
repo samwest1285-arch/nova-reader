@@ -1,4 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Internet für AI Butler & OpenRouter -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Kamera für Buch-Scan -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- Audio für TTS & Ambient-Sounds -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- Speicher für EPUB-Import -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <application
         android:label="nova_reader"
         android:name="${applicationName}"

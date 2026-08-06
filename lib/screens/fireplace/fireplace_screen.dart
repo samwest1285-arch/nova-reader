@@ -2,9 +2,11 @@ import 'dart:math';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 import '../../theme/app_theme.dart';
 import '../../providers/settings_provider.dart';
+import '../../services/tts_service.dart';
 
 /// The cozy fireplace reading room with animated flames, TTS, and ambient sounds.
 class FireplaceScreen extends ConsumerStatefulWidget {
@@ -28,6 +30,8 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
   int _currentChapter = 0;
   String _selectedVoice = 'Erzähler (tief)';
   AmbientSound _selectedSound = AmbientSound.fire;
+  final TtsService _tts = TtsService();
+  final AudioPlayer _ambientPlayer = AudioPlayer();
 
   final List<String> _voices = [
     'Erzähler (tief)',
@@ -99,11 +103,30 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
     _candleFlickerController.dispose();
     _butlerReadingController.dispose();
     _particleTimer?.cancel();
+    _tts.dispose();
+    _ambientPlayer.dispose();
     super.dispose();
   }
 
   void _togglePlayPause() {
-    setState(() => _isPlaying = !_isPlaying);
+    if (_isPlaying) {
+      _tts.pause();
+      setState(() => _isPlaying = false);
+    } else {
+      _startReading();
+    }
+  }
+
+  /// Starts (or resumes) reading the current page text aloud.
+  Future<void> _startReading() async {
+    if (_pageTexts.isEmpty) return;
+    final index = (_currentPage - 1).clamp(0, _pageTexts.length - 1);
+    final text = _pageTexts[index];
+    setState(() => _isPlaying = true);
+    await _tts.setSpeed(_readingSpeed);
+    await _tts.speak(text);
+    // When speech finishes naturally, reset the play state.
+    if (mounted) setState(() => _isPlaying = false);
   }
 
   void _nextPage() {
@@ -112,6 +135,8 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
       if (_currentPage % 10 == 0 && _currentChapter < _chapters.length - 1) {
         setState(() => _currentChapter++);
       }
+      // Restart reading if it was playing
+      if (_isPlaying) _startReading();
     }
   }
 
@@ -121,6 +146,8 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
       if (_currentPage % 10 == 0 && _currentChapter > 0) {
         setState(() => _currentChapter--);
       }
+      // Restart reading if it was playing
+      if (_isPlaying) _startReading();
     }
   }
 
@@ -171,6 +198,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
                         : null,
                     onTap: () {
                       setState(() => _selectedVoice = voice);
+                      _applyVoice(voice);
                       Navigator.pop(ctx);
                     },
                   );
@@ -181,6 +209,112 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
         );
       },
     );
+  }
+
+  /// Applies the selected voice profile to the TTS service.
+  Future<void> _applyVoice(String voice) async {
+    switch (voice) {
+      case 'Erzähler (tief)':
+        await _tts.setVoiceProfile(const VoiceProfile(
+          name: 'Narrator',
+          language: 'de-DE',
+          voiceId: '',
+          defaultSpeed: 1.0,
+          defaultPitch: 0.8,
+        ));
+        break;
+      case 'Erzählerin (warm)':
+        await _tts.setVoiceProfile(const VoiceProfile(
+          name: 'Narrator Female',
+          language: 'de-DE',
+          voiceId: '',
+          defaultSpeed: 1.0,
+          defaultPitch: 1.2,
+        ));
+        break;
+      case 'Alter Weiser':
+        await _tts.setVoiceProfile(const VoiceProfile(
+          name: 'Wise Sage',
+          language: 'de-DE',
+          voiceId: '',
+          defaultSpeed: 0.85,
+          defaultPitch: 0.6,
+        ));
+        break;
+      case 'Junge Heldin':
+        await _tts.setVoiceProfile(const VoiceProfile(
+          name: 'Young Heroine',
+          language: 'de-DE',
+          voiceId: '',
+          defaultSpeed: 1.15,
+          defaultPitch: 1.4,
+        ));
+        break;
+      case 'Butler (Jeeves)':
+        await _tts.setVoiceProfile(const VoiceProfile(
+          name: 'Butler',
+          language: 'de-DE',
+          voiceId: '',
+          defaultSpeed: 0.95,
+          defaultPitch: 0.9,
+        ));
+        break;
+      case 'Flüsternd':
+        await _tts.setVoiceProfile(const VoiceProfile(
+          name: 'Whisper',
+          language: 'de-DE',
+          voiceId: '',
+          defaultSpeed: 0.7,
+          defaultPitch: 1.1,
+        ));
+        break;
+      default:
+        await _tts.setVoiceProfile(const VoiceProfile(
+          name: 'Narrator',
+          language: 'de-DE',
+          voiceId: '',
+          defaultSpeed: 1.0,
+          defaultPitch: 1.0,
+        ));
+    }
+  }
+
+  /// Selects an ambient sound and plays/stops it.
+  Future<void> _selectAmbientSound(AmbientSound sound) async {
+    setState(() => _selectedSound = sound);
+    await _ambientPlayer.stop();
+
+    if (sound == AmbientSound.none) {
+      return;
+    }
+
+    final asset = _ambientAsset(sound);
+    if (asset == null) {
+      return;
+    }
+
+    try {
+      await _ambientPlayer.setVolume(_ambientVolume);
+      await _ambientPlayer.setReleaseMode(ReleaseMode.loop);
+      await _ambientPlayer.play(AssetSource(asset));
+    } catch (e) {
+      debugPrint('Ambient sound error: $e');
+    }
+  }
+
+  String? _ambientAsset(AmbientSound sound) {
+    switch (sound) {
+      case AmbientSound.fire:
+        return 'audio/fire.wav';
+      case AmbientSound.rain:
+        return 'audio/rain.wav';
+      case AmbientSound.wind:
+        return 'audio/wind.wav';
+      case AmbientSound.birds:
+        return 'audio/birds.wav';
+      case AmbientSound.none:
+        return null;
+    }
   }
 
   void _showAmbientSoundPicker() {
@@ -211,7 +345,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
                   icon: Icons.volume_off,
                   isSelected: _selectedSound == AmbientSound.none,
                   onTap: () {
-                    setState(() => _selectedSound = AmbientSound.none);
+                    _selectAmbientSound(AmbientSound.none);
                     Navigator.pop(ctx);
                   },
                 ),
@@ -220,7 +354,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
                   icon: Icons.fireplace,
                   isSelected: _selectedSound == AmbientSound.fire,
                   onTap: () {
-                    setState(() => _selectedSound = AmbientSound.fire);
+                    _selectAmbientSound(AmbientSound.fire);
                     Navigator.pop(ctx);
                   },
                 ),
@@ -229,7 +363,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
                   icon: Icons.water_drop,
                   isSelected: _selectedSound == AmbientSound.rain,
                   onTap: () {
-                    setState(() => _selectedSound = AmbientSound.rain);
+                    _selectAmbientSound(AmbientSound.rain);
                     Navigator.pop(ctx);
                   },
                 ),
@@ -238,7 +372,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
                   icon: Icons.air,
                   isSelected: _selectedSound == AmbientSound.wind,
                   onTap: () {
-                    setState(() => _selectedSound = AmbientSound.wind);
+                    _selectAmbientSound(AmbientSound.wind);
                     Navigator.pop(ctx);
                   },
                 ),
@@ -247,7 +381,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
                   icon: Icons.two_wheeler,
                   isSelected: _selectedSound == AmbientSound.birds,
                   onTap: () {
-                    setState(() => _selectedSound = AmbientSound.birds);
+                    _selectAmbientSound(AmbientSound.birds);
                     Navigator.pop(ctx);
                   },
                 ),
@@ -646,6 +780,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
                       label: '${_readingSpeed.toStringAsFixed(1)}x',
                       onChanged: (value) {
                         setState(() => _readingSpeed = value);
+                        _tts.setSpeed(value);
                       },
                     ),
                   ),
@@ -679,6 +814,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
                       divisions: 10,
                       onChanged: (value) {
                         setState(() => _ambientVolume = value);
+                        _ambientPlayer.setVolume(value);
                       },
                     ),
                   ),
