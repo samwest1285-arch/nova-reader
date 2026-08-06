@@ -535,13 +535,18 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
                     children: [
                       const Icon(Icons.record_voice_over,
                           color: NovaColors.paleGold, size: 22),
-                      Text(
-                        _selectedVoice.length > 10
-                            ? '${_selectedVoice.substring(0, 10)}...'
-                            : _selectedVoice,
-                        style: const TextStyle(
-                          color: NovaColors.tan,
-                          fontSize: 10,
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 56),
+                        child: Text(
+                          _selectedVoice.length > 10
+                              ? '${_selectedVoice.substring(0, 10)}...'
+                              : _selectedVoice,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: NovaColors.tan,
+                            fontSize: 10,
+                          ),
                         ),
                       ),
                     ],
@@ -599,11 +604,16 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
                         color: NovaColors.paleGold,
                         size: 22,
                       ),
-                      Text(
-                        _ambientSoundLabel(_selectedSound),
-                        style: const TextStyle(
-                          color: NovaColors.tan,
-                          fontSize: 10,
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 56),
+                        child: Text(
+                          _ambientSoundLabel(_selectedSound),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: NovaColors.tan,
+                            fontSize: 10,
+                          ),
                         ),
                       ),
                     ],
