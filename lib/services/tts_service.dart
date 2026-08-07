@@ -18,48 +18,48 @@ class VoiceProfile {
     this.defaultPitch = 1.0,
   });
 
-  /// The narrator voice — warm and clear.
+  /// The narrator voice — warm and clear, slow and natural.
   static const narrator = VoiceProfile(
     name: 'Narrator',
-    language: 'en-US',
-    voiceId: 'en-US-Standard-D',
-    defaultSpeed: 1.0,
+    language: 'de-DE',
+    voiceId: '',
+    defaultSpeed: 0.5,
     defaultPitch: 1.0,
   );
 
   /// A character voice for older, wise characters.
   static const character1 = VoiceProfile(
     name: 'Wise Sage',
-    language: 'en-US',
-    voiceId: 'en-US-Standard-C',
-    defaultSpeed: 0.85,
+    language: 'de-DE',
+    voiceId: '',
+    defaultSpeed: 0.45,
     defaultPitch: 0.8,
   );
 
   /// A character voice for younger, energetic characters.
   static const character2 = VoiceProfile(
     name: 'Young Adventurer',
-    language: 'en-US',
-    voiceId: 'en-US-Standard-B',
-    defaultSpeed: 1.15,
+    language: 'de-DE',
+    voiceId: '',
+    defaultSpeed: 0.55,
     defaultPitch: 1.3,
   );
 
   /// A character voice for mysterious characters.
   static const character3 = VoiceProfile(
     name: 'Mysterious Stranger',
-    language: 'en-US',
-    voiceId: 'en-US-Standard-A',
-    defaultSpeed: 0.75,
+    language: 'de-DE',
+    voiceId: '',
+    defaultSpeed: 0.4,
     defaultPitch: 0.6,
   );
 
   /// A character voice for cheerful characters.
   static const character4 = VoiceProfile(
     name: 'Cheerful Friend',
-    language: 'en-US',
-    voiceId: 'en-US-Standard-E',
-    defaultSpeed: 1.1,
+    language: 'de-DE',
+    voiceId: '',
+    defaultSpeed: 0.55,
     defaultPitch: 1.2,
   );
 
@@ -169,7 +169,8 @@ class TtsService {
 
   Future<void> _initTts() async {
     await _flutterTts.setLanguage(_currentProfile.language);
-    await _flutterTts.setSpeechRate(_speed);
+    // Langsamere, natürlichere Standard-Sprachrate
+    await _flutterTts.setSpeechRate(0.5);
     await _flutterTts.setPitch(_pitch);
     await _flutterTts.setVolume(_volume);
 
@@ -284,8 +285,22 @@ class TtsService {
     onStateChange?.call(_state);
 
     _speechCompleter = Completer<void>();
-    await _flutterTts.speak(text);
+    // Natürliche Pausen bei Satzzeichen einfügen
+    final naturalText = _addNaturalPauses(text);
+    await _flutterTts.speak(naturalText);
     return _speechCompleter!.future;
+  }
+
+  /// Adds natural pauses (SSML break tags) after sentence punctuation.
+  String _addNaturalPauses(String text) {
+    // Ersetze Satzenden durch SSML-Pausen für natürlicheren Rhythmus
+    return text
+        .replaceAll('. ', '.<break time="400ms"/> ')
+        .replaceAll('! ', '!<break time="500ms"/> ')
+        .replaceAll('? ', '?<break time="500ms"/> ')
+        .replaceAll(', ', ',<break time="200ms"/> ')
+        .replaceAll('.\n', '.<break time="600ms"/>\n')
+        .replaceAll('.\n\n', '.<break time="800ms"/>\n\n');
   }
 
   /// Speaks a list of segments, each potentially with a different voice profile.

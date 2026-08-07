@@ -70,6 +70,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       case TapZone.clock:
         _showTimerDialog(context);
         break;
+      case TapZone.camera:
+        context.push(AppRoutes.scanner);
+        break;
     }
   }
 
@@ -102,7 +105,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   color: const Color(0xFF6D4C41),
                   onTap: () {
                     Navigator.pop(ctx);
-                    context.go(AppRoutes.butlerChat);
+                    context.push(AppRoutes.butlerChat);
                   },
                 ),
                 const SizedBox(height: 12),
@@ -113,7 +116,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   color: const Color(0xFFBF360C),
                   onTap: () {
                     Navigator.pop(ctx);
-                    context.go(AppRoutes.fireplace);
+                    context.push(AppRoutes.fireplace);
                   },
                 ),
               ],
@@ -176,10 +179,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
 
           // ── Interaktive Tap-Zonen ──
-          // Positionen basierend auf Bildanalyse (in % des Screens):
-          //  Bücher: (0,0)-(50,100) | Kamin: (0,50)-(40,90)
-          //  Katze:  (35,48)-(50,60) | Sessel: (50,40)-(80,70)
-          //  Kaffeetasse: (62,60)-(70,65)
+          // Positionen basierend auf präziser Bildanalyse (in % des Screens):
+          //  Bücherregal: (0,0)-(20,100) | Kamin: (20,50)-(30,70)
+          //  Sessel: (45,40)-(60,80)     | Katze: (53,65)-(70,75)
+          //  Kaffeetasse: (48,62)-(55,68) | Uhr: (75,20)-(85,30)
+          //  Kamera/Scan: (90,90)-(95,95)
           Positioned.fill(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -187,55 +191,75 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 final h = constraints.maxHeight;
                 return Stack(
                   children: [
-                    // Bücher (linke Hälfte) — größte Zone, zuerst
+                    // Bücherregal (linke Kante) — Bibliothek
                     _TapZone(
                       zone: TapZone.books,
                       left: w * 0.0,
                       top: h * 0.0,
-                      width: w * 0.50,
+                      width: w * 0.20,
                       height: h * 1.0,
                       glow: _glow,
                       onTap: () => _onTap(context, TapZone.books),
                     ),
-                    // Kamin (links unten)
+                    // Kamin (links-mitte) — Kaminzimmer
                     _TapZone(
                       zone: TapZone.fireplace,
-                      left: w * 0.0,
+                      left: w * 0.20,
                       top: h * 0.50,
-                      width: w * 0.40,
-                      height: h * 0.40,
+                      width: w * 0.10,
+                      height: h * 0.20,
                       glow: _glow,
                       onTap: () => _onTap(context, TapZone.fireplace),
                     ),
-                    // Sessel (rechts mittig)
+                    // Sessel (rechts-mitte) — Einstellungen
                     _TapZone(
                       zone: TapZone.armchair,
-                      left: w * 0.50,
+                      left: w * 0.45,
                       top: h * 0.40,
-                      width: w * 0.30,
-                      height: h * 0.30,
+                      width: w * 0.15,
+                      height: h * 0.40,
                       glow: _glow,
                       onTap: () => _onTap(context, TapZone.armchair),
                     ),
-                    // Kaffeetasse (rechts unten) — über Sessel, zuletzt
+                    // Kaffeetasse (rechts-unten) — Caffè
                     _TapZone(
                       zone: TapZone.coffee,
-                      left: w * 0.60,
-                      top: h * 0.58,
-                      width: w * 0.12,
-                      height: h * 0.10,
+                      left: w * 0.48,
+                      top: h * 0.62,
+                      width: w * 0.07,
+                      height: h * 0.06,
                       glow: _glow,
                       onTap: () => _onTap(context, TapZone.coffee),
                     ),
-                    // Katze (mittig) — ganz oben im Stack, wird zuerst getroffen
+                    // Katze (auf dem Sessel) — Butler — ganz oben im Stack
                     _TapZone(
                       zone: TapZone.cat,
-                      left: w * 0.34,
-                      top: h * 0.46,
-                      width: w * 0.18,
-                      height: h * 0.16,
+                      left: w * 0.53,
+                      top: h * 0.65,
+                      width: w * 0.17,
+                      height: h * 0.10,
                       glow: _glow,
                       onTap: () => _onTap(context, TapZone.cat),
+                    ),
+                    // Uhr (rechts-oben) — Timer
+                    _TapZone(
+                      zone: TapZone.clock,
+                      left: w * 0.75,
+                      top: h * 0.20,
+                      width: w * 0.10,
+                      height: h * 0.10,
+                      glow: _glow,
+                      onTap: () => _onTap(context, TapZone.clock),
+                    ),
+                    // Kamera/Scan (rechts-unten) — Kamera-Scan
+                    _TapZone(
+                      zone: TapZone.camera,
+                      left: w * 0.90,
+                      top: h * 0.90,
+                      width: w * 0.05,
+                      height: h * 0.05,
+                      glow: _glow,
+                      onTap: () => _onTap(context, TapZone.camera),
                     ),
                   ],
                 );
@@ -304,7 +328,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 }
 
 /// The different interactive zones in the scene.
-enum TapZone { books, cat, coffee, fireplace, armchair, clock }
+enum TapZone { books, cat, coffee, fireplace, armchair, clock, camera }
 
 /// An invisible (or subtly glowing) interactive region over an object.
 class _TapZone extends StatelessWidget {
@@ -340,6 +364,8 @@ class _TapZone extends StatelessWidget {
         return 'Einstellungen';
       case TapZone.clock:
         return 'Timer';
+      case TapZone.camera:
+        return 'Kamera-Scan';
     }
   }
 
@@ -357,6 +383,8 @@ class _TapZone extends StatelessWidget {
         return Icons.chair;
       case TapZone.clock:
         return Icons.schedule;
+      case TapZone.camera:
+        return Icons.photo_camera;
     }
   }
 

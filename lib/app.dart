@@ -11,6 +11,7 @@ import 'screens/scanner/scanner_screen.dart';
 import 'screens/cafe/cafe_screen.dart';
 import 'screens/fireplace/fireplace_screen.dart';
 import 'screens/converter/converter_screen.dart';
+import 'screens/butler/butler_chat_screen.dart';
 
 /// Route names for the Nova Reader app.
 class AppRoutes {
@@ -357,10 +358,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.butlerChat,
         name: 'butlerChat',
-        builder: (context, state) => Scaffold(
-          appBar: AppBar(title: const Text('Butler Chat')),
-          body: const Center(child: Text('Butler chat - coming soon')),
-        ),
+        builder: (context, state) => const ButlerChatScreen(),
       ),
     ],
   );
