@@ -20,11 +20,12 @@ class VoiceProfile {
   });
 
   /// The narrator voice — warm and clear, slow and natural.
+  /// Tempo ~118 WPM (basierend auf der Leseprobe des Nutzers).
   static const narrator = VoiceProfile(
     name: 'Narrator',
     language: 'de-DE',
     voiceId: '',
-    defaultSpeed: 0.5,
+    defaultSpeed: 0.7,
     defaultPitch: 1.0,
   );
 
@@ -33,8 +34,8 @@ class VoiceProfile {
     name: 'Wise Sage',
     language: 'de-DE',
     voiceId: '',
-    defaultSpeed: 0.45,
-    defaultPitch: 0.8,
+    defaultSpeed: 0.65,
+    defaultPitch: 0.85,
   );
 
   /// A character voice for younger, energetic characters.
@@ -42,8 +43,8 @@ class VoiceProfile {
     name: 'Young Adventurer',
     language: 'de-DE',
     voiceId: '',
-    defaultSpeed: 0.55,
-    defaultPitch: 1.3,
+    defaultSpeed: 0.75,
+    defaultPitch: 1.25,
   );
 
   /// A character voice for mysterious characters.
@@ -51,8 +52,8 @@ class VoiceProfile {
     name: 'Mysterious Stranger',
     language: 'de-DE',
     voiceId: '',
-    defaultSpeed: 0.4,
-    defaultPitch: 0.6,
+    defaultSpeed: 0.6,
+    defaultPitch: 0.7,
   );
 
   /// A character voice for cheerful characters.
@@ -60,7 +61,7 @@ class VoiceProfile {
     name: 'Cheerful Friend',
     language: 'de-DE',
     voiceId: '',
-    defaultSpeed: 0.55,
+    defaultSpeed: 0.75,
     defaultPitch: 1.2,
   );
 
@@ -170,8 +171,8 @@ class TtsService {
 
   Future<void> _initTts() async {
     await _flutterTts.setLanguage(_currentProfile.language);
-    // Langsamere, natürlichere Standard-Sprachrate
-    await _flutterTts.setSpeechRate(0.5);
+    // Natürliche, gemütliche Sprechrate (~118 WPM, basierend auf Leseprobe)
+    await _flutterTts.setSpeechRate(0.7);
     await _flutterTts.setPitch(_pitch);
     await _flutterTts.setVolume(_volume);
 

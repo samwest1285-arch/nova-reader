@@ -23,7 +23,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
   late AnimationController _butlerReadingController;
   bool _isPlaying = false;
   bool _isMuted = false;
-  double _readingSpeed = 0.4;
+  double _readingSpeed = 0.7;
   double _ambientVolume = 0.5;
   int _currentPage = 1;
   int _totalPages = 45;
@@ -224,8 +224,8 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
           name: 'Narrator',
           language: 'de-DE',
           voiceId: '',
-          defaultSpeed: 0.4,
-          defaultPitch: 0.85,
+          defaultSpeed: 0.7,
+          defaultPitch: 0.9,
         ));
         break;
       case 'Erzählerin (warm)':
@@ -233,7 +233,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
           name: 'Narrator Female',
           language: 'de-DE',
           voiceId: '',
-          defaultSpeed: 0.4,
+          defaultSpeed: 0.7,
           defaultPitch: 1.15,
         ));
         break;
@@ -242,8 +242,8 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
           name: 'Wise Sage',
           language: 'de-DE',
           voiceId: '',
-          defaultSpeed: 0.35,
-          defaultPitch: 0.6,
+          defaultSpeed: 0.65,
+          defaultPitch: 0.7,
         ));
         break;
       case 'Junge Heldin':
@@ -251,8 +251,8 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
           name: 'Young Heroine',
           language: 'de-DE',
           voiceId: '',
-          defaultSpeed: 0.45,
-          defaultPitch: 1.35,
+          defaultSpeed: 0.75,
+          defaultPitch: 1.3,
         ));
         break;
       case 'Butler (Jeeves)':
@@ -260,7 +260,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
           name: 'Butler',
           language: 'de-DE',
           voiceId: '',
-          defaultSpeed: 0.4,
+          defaultSpeed: 0.7,
           defaultPitch: 0.9,
         ));
         break;
@@ -269,7 +269,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
           name: 'Whisper',
           language: 'de-DE',
           voiceId: '',
-          defaultSpeed: 0.3,
+          defaultSpeed: 0.6,
           defaultPitch: 1.1,
         ));
         break;
@@ -278,7 +278,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
           name: 'Narrator',
           language: 'de-DE',
           voiceId: '',
-          defaultSpeed: 0.4,
+          defaultSpeed: 0.7,
           defaultPitch: 1.0,
         ));
     }
