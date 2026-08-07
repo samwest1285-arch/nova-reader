@@ -323,22 +323,10 @@ class TtsService {
     onStateChange?.call(_state);
 
     _speechCompleter = Completer<void>();
-    // Natürliche Pausen bei Satzzeichen einfügen
-    final naturalText = _addNaturalPauses(text);
-    await _flutterTts.speak(naturalText);
+    // KEINE SSML-Tags einfügen — flutter_tts liest sie sonst als Text vor.
+    // Die TTS-Engine macht von sich aus natürliche Pausen bei Satzzeichen.
+    await _flutterTts.speak(text);
     return _speechCompleter!.future;
-  }
-
-  /// Adds natural pauses (SSML break tags) after sentence punctuation.
-  String _addNaturalPauses(String text) {
-    // Ersetze Satzenden durch SSML-Pausen für natürlicheren Rhythmus
-    return text
-        .replaceAll('. ', '.<break time="400ms"/> ')
-        .replaceAll('! ', '!<break time="500ms"/> ')
-        .replaceAll('? ', '?<break time="500ms"/> ')
-        .replaceAll(', ', ',<break time="200ms"/> ')
-        .replaceAll('.\n', '.<break time="600ms"/>\n')
-        .replaceAll('.\n\n', '.<break time="800ms"/>\n\n');
   }
 
   /// Speaks a list of segments, each potentially with a different voice profile.
