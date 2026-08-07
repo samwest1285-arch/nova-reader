@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:camera/camera.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../theme/app_theme.dart';
 
@@ -23,6 +25,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   Timer? _conversionTimer;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  CameraController? _cameraController;
+  List<CameraDescription>? _cameras;
+  bool _cameraError = false;
 
   @override
   void initState() {
@@ -41,25 +46,54 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     _pulseController.dispose();
     _processingTimer?.cancel();
     _conversionTimer?.cancel();
+    _cameraController?.dispose();
     super.dispose();
   }
 
-  void _startCamera() {
+  Future<void> _startCamera() async {
     setState(() {
       _isCameraActive = true;
       _capturedText = '';
+      _cameraError = false;
     });
-    // Simulate camera activation
-    _processingTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _isProcessing = true;
-        });
+
+    // Kamera-Berechtigung anfordern (Android 6+)
+    final status = await Permission.camera.request();
+    if (!status.isGranted) {
+      if (mounted) setState(() => _cameraError = true);
+      return;
+    }
+
+    try {
+      // Get available cameras
+      _cameras ??= await availableCameras();
+      if (_cameras == null || _cameras!.isEmpty) {
+        setState(() => _cameraError = true);
+        return;
       }
-    });
+
+      // Use the back camera if available, otherwise the first one
+      final backCamera = _cameras!.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => _cameras!.first,
+      );
+
+      _cameraController = CameraController(
+        backCamera,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+      await _cameraController!.initialize();
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('Camera error: $e');
+      if (mounted) setState(() => _cameraError = true);
+    }
   }
 
-  void _stopCamera() {
+  Future<void> _stopCamera() async {
+    await _cameraController?.dispose();
+    _cameraController = null;
     setState(() {
       _isCameraActive = false;
       _isProcessing = false;
@@ -67,11 +101,23 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     _processingTimer?.cancel();
   }
 
-  void _captureImage() {
+  Future<void> _captureImage() async {
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+      return;
+    }
     setState(() {
       _isProcessing = true;
     });
-    // Simulate text recognition
+
+    try {
+      // Take a real photo
+      final file = await _cameraController!.takePicture();
+      debugPrint('Photo captured: ${file.path}');
+    } catch (e) {
+      debugPrint('Capture error: $e');
+    }
+
+    // Simulate text recognition (real OCR would process the image here)
     _processingTimer?.cancel();
     _processingTimer = Timer(const Duration(seconds: 2), () {
       if (mounted) {
@@ -157,8 +203,11 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: const Color(0xFF2E1B12),
       appBar: AppBar(
         title: const Text('Kamera-Scan'),
+        backgroundColor: const Color(0xFF3E2723),
+        foregroundColor: NovaColors.paleGold,
         actions: [
           if (_isCameraActive)
             IconButton(
@@ -232,6 +281,124 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   }
 
   Widget _buildCameraPreview(ThemeData theme) {
+    // Echte Kamera-Vorschau, wenn verfügbar
+    if (_cameraController != null && _cameraController!.value.isInitialized) {
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: CameraPreview(_cameraController!),
+          ),
+          // Scanning frame overlay
+          Center(
+            child: AnimatedBuilder(
+              animation: _pulseAnimation,
+              builder: (context, child) {
+                return Container(
+                  width: 250 * _pulseAnimation.value,
+                  height: 200 * _pulseAnimation.value,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: NovaColors.warmGold.withValues(alpha: 0.6),
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: _isProcessing
+                        ? const CircularProgressIndicator(
+                            color: NovaColors.warmGold,
+                          )
+                        : const Icon(
+                            Icons.text_fields,
+                            size: 48,
+                            color: NovaColors.warmGold,
+                          ),
+                  ),
+                );
+              },
+            ),
+          ),
+          // Camera controls overlay
+          Positioned(
+            bottom: 20,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Gallery button
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: NovaColors.charcoal.withValues(alpha: 0.7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.photo_library,
+                        color: NovaColors.paleGold, size: 22),
+                    onPressed: _importFromGallery,
+                    tooltip: 'Aus Galerie',
+                  ),
+                ),
+                const SizedBox(width: 40),
+                // Capture button
+                GestureDetector(
+                  onTap: _isProcessing ? null : _captureImage,
+                  child: AnimatedBuilder(
+                    animation: _pulseAnimation,
+                    builder: (context, child) {
+                      return Container(
+                        width: 72 * _pulseAnimation.value,
+                        height: 72 * _pulseAnimation.value,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: NovaColors.paleGold,
+                          border: Border.all(
+                            color: NovaColors.warmWhite,
+                            width: 4,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: NovaColors.paleGold.withValues(alpha: 0.3),
+                              blurRadius: 12,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          color: NovaColors.deepBrown,
+                          size: 32,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 40),
+                // Close button
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: NovaColors.charcoal.withValues(alpha: 0.7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.close,
+                        color: NovaColors.paleGold, size: 22),
+                    onPressed: _stopCamera,
+                    tooltip: 'Schließen',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Fallback: Kamera-Fehler oder noch nicht initialisiert
     return Stack(
       children: [
         // Simulated camera view
@@ -251,42 +418,27 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Scanning frame
-                AnimatedBuilder(
-                  animation: _pulseAnimation,
-                  builder: (context, child) {
-                    return Container(
-                      width: 250 * _pulseAnimation.value,
-                      height: 200 * _pulseAnimation.value,
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: NovaColors.warmGold.withValues(alpha: 0.6),
-                          width: 2,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: _isProcessing
-                            ? const CircularProgressIndicator(
-                                color: NovaColors.warmGold,
-                              )
-                            : const Icon(
-                                Icons.text_fields,
-                                size: 48,
-                                color: NovaColors.warmGold,
-                              ),
-                      ),
-                    );
-                  },
+                Icon(
+                  _cameraError ? Icons.no_photography : Icons.camera_alt,
+                  size: 80,
+                  color: NovaColors.mediumBrown.withValues(alpha: 0.5),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _isProcessing
-                      ? 'Erkennung läuft...'
-                      : 'Text im Rahmen platzieren',
-                  style: const TextStyle(
-                    color: NovaColors.paleGold,
-                    fontSize: 14,
+                  _cameraError
+                      ? 'Kamera nicht verfügbar'
+                      : 'Kamera wird initialisiert...',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: NovaColors.mediumBrown,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _cameraError
+                      ? 'Bitte Kamera-Berechtigung erteilen'
+                      : 'Bitte warten...',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: NovaColors.lightBrown,
                   ),
                 ),
               ],

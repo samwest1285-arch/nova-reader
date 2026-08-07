@@ -270,7 +270,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     displayBooks = _getSortedBooks(displayBooks);
 
     return Scaffold(
+      backgroundColor: const Color(0xFF2E1B12),
       appBar: AppBar(
+        backgroundColor: const Color(0xFF3E2723),
+        foregroundColor: NovaColors.paleGold,
         title: _showSearch
             ? TextField(
                 controller: _searchController,

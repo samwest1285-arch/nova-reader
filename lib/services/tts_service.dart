@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
 /// A voice profile for the TTS service.
@@ -254,6 +255,42 @@ class TtsService {
     }
     if (profile.defaultPitch != 1.0) {
       await setPitch(profile.defaultPitch);
+    }
+  }
+
+  /// Loads the available system voices and picks the best German ones.
+  /// This makes the TTS sound more natural by using real system voices
+  /// instead of just pitch/speed variations.
+  Future<List<dynamic>> loadAndSelectGermanVoices() async {
+    try {
+      final voices = await _flutterTts.getVoices;
+      if (voices is List && voices.isNotEmpty) {
+        // Find German voices
+        final germanVoices = voices.where((v) {
+          final name = (v is Map ? v['name']?.toString() ?? '' : v.toString()).toLowerCase();
+          final locale = (v is Map ? v['locale']?.toString() ?? '' : '').toLowerCase();
+          return name.contains('de') || locale.contains('de') || name.contains('german');
+        }).toList();
+
+        if (germanVoices.isNotEmpty) {
+          // Use the first German voice as the default narrator
+          final firstVoice = germanVoices.first;
+          if (firstVoice is Map) {
+            final voiceMap = <String, String>{
+              for (final entry in firstVoice.entries)
+                if (entry.key is String && entry.value is String)
+                  entry.key as String: entry.value as String,
+            };
+            if (voiceMap.isNotEmpty) {
+              await _flutterTts.setVoice(voiceMap);
+            }
+          }
+        }
+      }
+      return voices;
+    } catch (e) {
+      debugPrint('Voice loading error: $e');
+      return [];
     }
   }
 

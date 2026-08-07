@@ -23,7 +23,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
   late AnimationController _butlerReadingController;
   bool _isPlaying = false;
   bool _isMuted = false;
-  double _readingSpeed = 1.0;
+  double _readingSpeed = 0.4;
   double _ambientVolume = 0.5;
   int _currentPage = 1;
   int _totalPages = 45;
@@ -85,6 +85,9 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
       _flameParticles.add(_FlameParticle());
     }
 
+    // Lade echte deutsche Systemstimmen für natürlicheren Klang
+    _tts.loadAndSelectGermanVoices();
+
     // Update particles periodically
     _particleTimer = Timer.periodic(const Duration(milliseconds: 50), (_) {
       if (mounted) {
@@ -123,6 +126,8 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
     final index = (_currentPage - 1).clamp(0, _pageTexts.length - 1);
     final text = _pageTexts[index];
     setState(() => _isPlaying = true);
+    // Stimme anwenden (falls noch nicht geschehen)
+    await _applyVoice(_selectedVoice);
     await _tts.setSpeed(_readingSpeed);
     await _tts.speak(text);
     // When speech finishes naturally, reset the play state.
@@ -219,8 +224,8 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
           name: 'Narrator',
           language: 'de-DE',
           voiceId: '',
-          defaultSpeed: 1.0,
-          defaultPitch: 0.8,
+          defaultSpeed: 0.4,
+          defaultPitch: 0.85,
         ));
         break;
       case 'Erzählerin (warm)':
@@ -228,8 +233,8 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
           name: 'Narrator Female',
           language: 'de-DE',
           voiceId: '',
-          defaultSpeed: 1.0,
-          defaultPitch: 1.2,
+          defaultSpeed: 0.4,
+          defaultPitch: 1.15,
         ));
         break;
       case 'Alter Weiser':
@@ -237,7 +242,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
           name: 'Wise Sage',
           language: 'de-DE',
           voiceId: '',
-          defaultSpeed: 0.85,
+          defaultSpeed: 0.35,
           defaultPitch: 0.6,
         ));
         break;
@@ -246,8 +251,8 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
           name: 'Young Heroine',
           language: 'de-DE',
           voiceId: '',
-          defaultSpeed: 1.15,
-          defaultPitch: 1.4,
+          defaultSpeed: 0.45,
+          defaultPitch: 1.35,
         ));
         break;
       case 'Butler (Jeeves)':
@@ -255,7 +260,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
           name: 'Butler',
           language: 'de-DE',
           voiceId: '',
-          defaultSpeed: 0.95,
+          defaultSpeed: 0.4,
           defaultPitch: 0.9,
         ));
         break;
@@ -264,7 +269,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
           name: 'Whisper',
           language: 'de-DE',
           voiceId: '',
-          defaultSpeed: 0.7,
+          defaultSpeed: 0.3,
           defaultPitch: 1.1,
         ));
         break;
@@ -273,7 +278,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
           name: 'Narrator',
           language: 'de-DE',
           voiceId: '',
-          defaultSpeed: 1.0,
+          defaultSpeed: 0.4,
           defaultPitch: 1.0,
         ));
     }
@@ -774,9 +779,9 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
                     ),
                     child: Slider(
                       value: _readingSpeed,
-                      min: 0.5,
-                      max: 2.0,
-                      divisions: 6,
+                      min: 0.2,
+                      max: 1.0,
+                      divisions: 8,
                       label: '${_readingSpeed.toStringAsFixed(1)}x',
                       onChanged: (value) {
                         setState(() => _readingSpeed = value);

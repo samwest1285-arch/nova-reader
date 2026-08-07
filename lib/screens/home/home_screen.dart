@@ -21,24 +21,14 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _glow;
-
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2200),
-    )..repeat(reverse: true);
-    _glow = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
     super.dispose();
   }
 
@@ -180,10 +170,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
           // ── Interaktive Tap-Zonen ──
           // Positionen basierend auf präziser Bildanalyse (in % des Screens):
-          //  Bücherregal: (0,0)-(20,100) | Kamin: (20,50)-(30,70)
-          //  Sessel: (45,40)-(60,80)     | Katze: (53,65)-(70,75)
-          //  Kaffeetasse: (48,62)-(55,68) | Uhr: (75,20)-(85,30)
-          //  Kamera/Scan: (90,90)-(95,95)
+          //  Flammen/Kamin: (15,58)-(35,75) | Bücher: (0,0)-(20,100)
+          //  Fenster: (35,20)-(65,50)       | Katze: (50,65)-(65,75)
+          //  Kaffeetasse: (45,60)-(50,65)   | Sessel: (40,50)-(70,80)
           Positioned.fill(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -191,74 +180,67 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 final h = constraints.maxHeight;
                 return Stack(
                   children: [
-                    // Bücherregal (linke Kante) — Bibliothek
+                    // Bücher (linke Kante, neben dem Kamin) — Bibliothek
                     _TapZone(
                       zone: TapZone.books,
                       left: w * 0.0,
                       top: h * 0.0,
                       width: w * 0.20,
                       height: h * 1.0,
-                      glow: _glow,
                       onTap: () => _onTap(context, TapZone.books),
                     ),
-                    // Kamin (links-mitte) — Kaminzimmer
+                    // Kaminzimmer — direkt auf den Flammen (links-mitte)
                     _TapZone(
                       zone: TapZone.fireplace,
-                      left: w * 0.20,
-                      top: h * 0.50,
-                      width: w * 0.10,
-                      height: h * 0.20,
-                      glow: _glow,
+                      left: w * 0.15,
+                      top: h * 0.58,
+                      width: w * 0.20,
+                      height: h * 0.17,
                       onTap: () => _onTap(context, TapZone.fireplace),
                     ),
                     // Sessel (rechts-mitte) — Einstellungen
                     _TapZone(
                       zone: TapZone.armchair,
-                      left: w * 0.45,
-                      top: h * 0.40,
-                      width: w * 0.15,
-                      height: h * 0.40,
-                      glow: _glow,
+                      left: w * 0.40,
+                      top: h * 0.50,
+                      width: w * 0.30,
+                      height: h * 0.30,
                       onTap: () => _onTap(context, TapZone.armchair),
                     ),
                     // Kaffeetasse (rechts-unten) — Caffè
                     _TapZone(
                       zone: TapZone.coffee,
-                      left: w * 0.48,
-                      top: h * 0.62,
-                      width: w * 0.07,
-                      height: h * 0.06,
-                      glow: _glow,
+                      left: w * 0.45,
+                      top: h * 0.60,
+                      width: w * 0.05,
+                      height: h * 0.05,
                       onTap: () => _onTap(context, TapZone.coffee),
                     ),
                     // Katze (auf dem Sessel) — Butler — ganz oben im Stack
                     _TapZone(
                       zone: TapZone.cat,
-                      left: w * 0.53,
+                      left: w * 0.50,
                       top: h * 0.65,
-                      width: w * 0.17,
+                      width: w * 0.15,
                       height: h * 0.10,
-                      glow: _glow,
                       onTap: () => _onTap(context, TapZone.cat),
                     ),
-                    // Uhr (rechts-oben) — Timer
+                    // Timer — mittig im Fenster
                     _TapZone(
                       zone: TapZone.clock,
-                      left: w * 0.75,
+                      left: w * 0.35,
                       top: h * 0.20,
-                      width: w * 0.10,
-                      height: h * 0.10,
-                      glow: _glow,
+                      width: w * 0.30,
+                      height: h * 0.30,
                       onTap: () => _onTap(context, TapZone.clock),
                     ),
-                    // Kamera/Scan (rechts-unten) — Kamera-Scan
+                    // Kamera/Scan (rechts, etwas höher) — Kamera-Scan
                     _TapZone(
                       zone: TapZone.camera,
-                      left: w * 0.90,
-                      top: h * 0.90,
-                      width: w * 0.05,
-                      height: h * 0.05,
-                      glow: _glow,
+                      left: w * 0.85,
+                      top: h * 0.80,
+                      width: w * 0.08,
+                      height: h * 0.08,
                       onTap: () => _onTap(context, TapZone.camera),
                     ),
                   ],
@@ -330,14 +312,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 /// The different interactive zones in the scene.
 enum TapZone { books, cat, coffee, fireplace, armchair, clock, camera }
 
-/// An invisible (or subtly glowing) interactive region over an object.
+/// An invisible interactive region over an object in the scene.
 class _TapZone extends StatelessWidget {
   final TapZone zone;
   final double left;
   final double top;
   final double width;
   final double height;
-  final Animation<double> glow;
   final VoidCallback onTap;
 
   const _TapZone({
@@ -346,47 +327,8 @@ class _TapZone extends StatelessWidget {
     required this.top,
     required this.width,
     required this.height,
-    required this.glow,
     required this.onTap,
   });
-
-  String get _label {
-    switch (zone) {
-      case TapZone.books:
-        return 'Bibliothek';
-      case TapZone.cat:
-        return 'Butler';
-      case TapZone.coffee:
-        return 'Caffè';
-      case TapZone.fireplace:
-        return 'Kaminzimmer';
-      case TapZone.armchair:
-        return 'Einstellungen';
-      case TapZone.clock:
-        return 'Timer';
-      case TapZone.camera:
-        return 'Kamera-Scan';
-    }
-  }
-
-  IconData get _icon {
-    switch (zone) {
-      case TapZone.books:
-        return Icons.auto_stories;
-      case TapZone.cat:
-        return Icons.pets;
-      case TapZone.coffee:
-        return Icons.local_cafe;
-      case TapZone.fireplace:
-        return Icons.local_fire_department;
-      case TapZone.armchair:
-        return Icons.chair;
-      case TapZone.clock:
-        return Icons.schedule;
-      case TapZone.camera:
-        return Icons.photo_camera;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -398,64 +340,9 @@ class _TapZone extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
-        child: AnimatedBuilder(
-          animation: glow,
-          builder: (context, child) {
-            return Stack(
-              alignment: Alignment.center,
-              children: [
-                // Subtiler Puls-Glow, damit man erkennt, dass es klickbar ist
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFFB74D)
-                            .withOpacity(0.12 + glow.value * 0.15),
-                        blurRadius: 30 + glow.value * 20,
-                        spreadRadius: 5 + glow.value * 8,
-                      ),
-                    ],
-                  ),
-                ),
-                // Kleines Icon + Label (dezent, über dem Objekt)
-                Positioned(
-                  bottom: 4,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _icon,
-                        color: Colors.white.withOpacity(0.85),
-                        size: 22,
-                        shadows: const [
-                          Shadow(blurRadius: 8, color: Colors.black)
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          _label,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
+        // Unsichtbare Tap-Zone — die Objekte im Bild sind die Buttons.
+        // Kein sichtbarer Glow/Icon/Label, damit das Bild sauber bleibt.
+        child: const SizedBox.expand(),
       ),
     );
   }

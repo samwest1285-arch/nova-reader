@@ -129,8 +129,11 @@ class _ConverterScreenState extends ConsumerState<ConverterScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: const Color(0xFF2E1B12),
       appBar: AppBar(
         title: const Text('PDF/Photo zu EPUB'),
+        backgroundColor: const Color(0xFF3E2723),
+        foregroundColor: NovaColors.paleGold,
         actions: [
           if (_fileSelected)
             IconButton(
