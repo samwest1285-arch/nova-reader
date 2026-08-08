@@ -313,7 +313,11 @@ class TtsService {
     await _flutterTts.setVolume(_volume);
   }
 
-  /// Speaks a single string of text.
+  /// Speaks a single string of text with natural modulation.
+  ///
+  /// Splits the text into sentences and varies pitch/speed per sentence to
+  /// break monotony: questions rise, exclamations emphasize, dialogue gets a
+  /// different tone, narration stays calm. This mimics human modulation.
   Future<void> speak(String text) async {
     await stop();
     _currentText = text;
@@ -323,10 +327,70 @@ class TtsService {
     onStateChange?.call(_state);
 
     _speechCompleter = Completer<void>();
-    // KEINE SSML-Tags einfügen — flutter_tts liest sie sonst als Text vor.
-    // Die TTS-Engine macht von sich aus natürliche Pausen bei Satzzeichen.
-    await _flutterTts.speak(text);
-    return _speechCompleter!.future;
+
+    // Aufteilen in Sätze mit Modulation
+    final sentences = _splitSentences(text);
+    for (final sentence in sentences) {
+      if (_state == TtsState.stopped) break;
+      await _speakWithModulation(sentence);
+    }
+
+    _state = TtsState.stopped;
+    onStateChange?.call(_state);
+    _speechCompleter?.complete();
+    _speechCompleter = null;
+  }
+
+  /// Splits text into sentences, keeping the punctuation.
+  List<String> _splitSentences(String text) {
+    // Splitte an . ! ? gefolgt von Leerzeichen/Zeilenumbruch, behalte das Zeichen
+    final parts = text.split(RegExp(r'(?<=[.!?])\s+'));
+    return parts.where((p) => p.trim().isNotEmpty).toList();
+  }
+
+  /// Speaks a single sentence with pitch/speed modulation based on its type.
+  Future<void> _speakWithModulation(String sentence) async {
+    final trimmed = sentence.trim();
+    if (trimmed.isEmpty) return;
+
+    // Bestimme Satztyp für Modulation
+    final lastChar = trimmed.isNotEmpty ? trimmed[trimmed.length - 1] : '.';
+    final isQuestion = lastChar == '?';
+    final isExclamation = lastChar == '!';
+    final isDialogue = trimmed.startsWith('"') || trimmed.startsWith('„') ||
+        trimmed.startsWith('»') || trimmed.contains('"') && trimmed.length < 120;
+
+    double pitch;
+    double speed;
+
+    if (isQuestion) {
+      // Fragen steigen am Ende — höhere Tonlage, etwas langsamer
+      pitch = _pitch * 1.15;
+      speed = _speed * 0.95;
+    } else if (isExclamation) {
+      // Ausrufe betont — höhere Tonlage, etwas schneller
+      pitch = _pitch * 1.1;
+      speed = _speed * 1.05;
+    } else if (isDialogue) {
+      // Dialoge — leicht höher, etwas schneller (lebendiger)
+      pitch = _pitch * 1.08;
+      speed = _speed * 1.02;
+    } else {
+      // Erzählung — ruhig, tiefer, langsamer
+      pitch = _pitch * 0.95;
+      speed = _speed * 0.98;
+    }
+
+    // Wende Modulation an
+    await _flutterTts.setPitch(pitch.clamp(0.5, 2.0));
+    await _flutterTts.setSpeechRate(speed.clamp(0.25, 2.0));
+
+    // Warte bis der Satz fertig gesprochen ist, bevor der nächste kommt.
+    // flutter_tts.speak() ist asynchron — wir warten auf den Completion-Handler.
+    final completer = Completer<void>();
+    _speechCompleter = completer;
+    await _flutterTts.speak(trimmed);
+    await completer.future;
   }
 
   /// Speaks a list of segments, each potentially with a different voice profile.
