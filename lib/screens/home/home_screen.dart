@@ -230,7 +230,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Positioned.fill(
             child: Image.asset(
               'assets/images/home_background.png',
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
             ),
           ),
 
