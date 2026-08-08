@@ -12,17 +12,28 @@ class PiperTtsAdapter {
   final PiperTtsService _piper = PiperTtsService();
   final AudioPlayer _player = AudioPlayer();
   bool _initialized = false;
+  Future<bool>? _initFuture;
   double _speed = 1.0;
   bool _isPlaying = false;
   Completer<void>? _completion;
 
   bool get isPlaying => _isPlaying;
 
-  /// Initialisiert Piper (lädt das deutsche Modell).
-  Future<bool> init() async {
-    if (_initialized) return true;
-    _initialized = await _piper.init();
-    return _initialized;
+  /// Initialisiert Piper (lädt das deutsche Modell) — nur einmal, mit Cache.
+  Future<bool> init() {
+    if (_initialized) return Future.value(true);
+    // Verhindert Doppel-Init (Race Condition beim schnellen Tippen auf Play)
+    return _initFuture ??= _doInit();
+  }
+
+  Future<bool> _doInit() async {
+    try {
+      _initialized = await _piper.init();
+      return _initialized;
+    } catch (e) {
+      _initialized = false;
+      return false;
+    }
   }
 
   /// Setzt die Sprechgeschwindigkeit (0.5 - 2.0).

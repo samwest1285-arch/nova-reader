@@ -60,6 +60,8 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
   // Particle system for flames
   final List<_FlameParticle> _flameParticles = [];
   Timer? _particleTimer;
+  bool _ttsLoading = true;
+  bool _ttsReady = false;
 
   @override
   void initState() {
@@ -85,8 +87,8 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
       _flameParticles.add(_FlameParticle());
     }
 
-    // Piper TTS initialisieren (lädt das deutsche Modell im Hintergrund)
-    _tts.init();
+    // Piper TTS im Hintergrund laden — Play-Button erst freigeben wenn bereit
+    _initTtsAsync();
 
     // Update particles periodically
     _particleTimer = Timer.periodic(const Duration(milliseconds: 50), (_) {
@@ -111,6 +113,17 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
     super.dispose();
   }
 
+  /// Initialisiert Piper TTS im Hintergrund und gibt den Play-Button frei.
+  Future<void> _initTtsAsync() async {
+    final ok = await _tts.init();
+    if (mounted) {
+      setState(() {
+        _ttsLoading = false;
+        _ttsReady = ok;
+      });
+    }
+  }
+
   void _togglePlayPause() {
     if (_isPlaying) {
       _tts.pause();
@@ -123,6 +136,22 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
   /// Starts (or resumes) reading the current page text aloud.
   Future<void> _startReading() async {
     if (_pageTexts.isEmpty) return;
+    // Warten bis Piper bereit ist (falls noch am Laden)
+    if (!_ttsReady) {
+      if (_ttsLoading) {
+        // Zeige Ladehinweis
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Stimme wird geladen… bitte kurz warten'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+      return;
+    }
     final index = (_currentPage - 1).clamp(0, _pageTexts.length - 1);
     final text = _pageTexts[index];
     setState(() => _isPlaying = true);
