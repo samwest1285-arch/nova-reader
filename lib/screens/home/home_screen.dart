@@ -118,29 +118,103 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _showTimerDialog(BuildContext context) {
+    int minutes = 10;
     showDialog(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF3E2723),
-          title: const Text(
-            'Lese-Timer',
-            style: TextStyle(color: Color(0xFFFFE0B2)),
-          ),
-          content: const Text(
-            'Stelle einen Timer für eine fokussierte Lese-Session ein.',
-            style: TextStyle(color: Color(0xFFD7CCC8)),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Schließen',
-                  style: TextStyle(color: Color(0xFFFFB74D))),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF3E2723),
+              title: const Text(
+                'Lese-Timer',
+                style: TextStyle(color: Color(0xFFFFE0B2)),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Stelle einen Timer für eine fokussierte Lese-Session ein.',
+                    style: TextStyle(color: Color(0xFFD7CCC8)),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    '$minutes Minuten',
+                    style: const TextStyle(
+                      color: Color(0xFFFFB74D),
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle,
+                            color: Color(0xFFFFB74D)),
+                        onPressed: () {
+                          if (minutes > 1) {
+                            setDialogState(() => minutes -= 5);
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 20),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle,
+                            color: Color(0xFFFFB74D)),
+                        onPressed: () {
+                          if (minutes < 120) {
+                            setDialogState(() => minutes += 5);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Abbrechen',
+                      style: TextStyle(color: Color(0xFFD7CCC8))),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _startReadingTimer(minutes);
+                  },
+                  child: const Text('Start',
+                      style: TextStyle(color: Color(0xFFFFB74D))),
+                ),
+              ],
+            );
+          },
         );
       },
     );
+  }
+
+  /// Starts a countdown reading timer and shows a snackbar when done.
+  void _startReadingTimer(int minutes) {
+    final duration = Duration(minutes: minutes);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Lese-Timer gestartet: $minutes Minuten'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    // Countdown im Hintergrund
+    Future.delayed(duration, () {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⏰ Lese-Session beendet! Gut gemacht.'),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -169,10 +243,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
 
           // ── Interaktive Tap-Zonen ──
-          // Positionen basierend auf präziser Bildanalyse (in % des Screens):
-          //  Flammen/Kamin: (15,58)-(35,75) | Bücher: (0,0)-(20,100)
-          //  Fenster: (35,20)-(65,50)       | Katze: (50,65)-(65,75)
-          //  Kaffeetasse: (45,60)-(50,65)   | Sessel: (40,50)-(70,80)
+          // Positionen basierend auf Bildanalyse des neuen Lesezimmer-Bilds (in %):
+          //  Bücherregal: (12,0)-(40,75) | Kamin: (0,43)-(31,80)
+          //  Sessel: (48,39)-(94,85)     | Katze: (58,51)-(82,63)
+          //  Kaffeetasse: (84,51)-(94,57) | Fenster: (43,0)-(82,41)
           Positioned.fill(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -180,67 +254,67 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final h = constraints.maxHeight;
                 return Stack(
                   children: [
-                    // Bücher (linke Kante, neben dem Kamin) — Bibliothek
+                    // Kaminzimmer — auf den Büchern (links)
+                    _TapZone(
+                      zone: TapZone.fireplace,
+                      left: w * 0.12,
+                      top: h * 0.0,
+                      width: w * 0.28,
+                      height: h * 0.75,
+                      onTap: () => _onTap(context, TapZone.fireplace),
+                    ),
+                    // Bibliothek — auf dem Kamin (links unten)
                     _TapZone(
                       zone: TapZone.books,
                       left: w * 0.0,
-                      top: h * 0.0,
-                      width: w * 0.20,
-                      height: h * 1.0,
+                      top: h * 0.43,
+                      width: w * 0.31,
+                      height: h * 0.37,
                       onTap: () => _onTap(context, TapZone.books),
                     ),
-                    // Kaminzimmer — direkt auf den Flammen (links-mitte)
-                    _TapZone(
-                      zone: TapZone.fireplace,
-                      left: w * 0.15,
-                      top: h * 0.58,
-                      width: w * 0.20,
-                      height: h * 0.17,
-                      onTap: () => _onTap(context, TapZone.fireplace),
-                    ),
-                    // Sessel (rechts-mitte) — Einstellungen
+                    // Sessel (rechts) — Einstellungen
                     _TapZone(
                       zone: TapZone.armchair,
-                      left: w * 0.40,
-                      top: h * 0.50,
-                      width: w * 0.30,
-                      height: h * 0.30,
+                      left: w * 0.48,
+                      top: h * 0.39,
+                      width: w * 0.46,
+                      height: h * 0.46,
                       onTap: () => _onTap(context, TapZone.armchair),
                     ),
-                    // Kaffeetasse (rechts-unten) — Caffè
+                    // Kaffeetasse (rechts unten) — Caffè
                     _TapZone(
                       zone: TapZone.coffee,
-                      left: w * 0.45,
-                      top: h * 0.60,
-                      width: w * 0.05,
-                      height: h * 0.05,
+                      left: w * 0.84,
+                      top: h * 0.51,
+                      width: w * 0.10,
+                      height: h * 0.06,
                       onTap: () => _onTap(context, TapZone.coffee),
                     ),
                     // Katze (auf dem Sessel) — Butler — ganz oben im Stack
                     _TapZone(
                       zone: TapZone.cat,
-                      left: w * 0.50,
-                      top: h * 0.65,
-                      width: w * 0.15,
-                      height: h * 0.10,
+                      left: w * 0.58,
+                      top: h * 0.51,
+                      width: w * 0.24,
+                      height: h * 0.12,
                       onTap: () => _onTap(context, TapZone.cat),
                     ),
-                    // Timer — mittig im Fenster
+                    // Timer — im Fenster (oben)
                     _TapZone(
                       zone: TapZone.clock,
-                      left: w * 0.35,
-                      top: h * 0.20,
-                      width: w * 0.30,
-                      height: h * 0.30,
+                      left: w * 0.43,
+                      top: h * 0.0,
+                      width: w * 0.39,
+                      height: h * 0.41,
                       onTap: () => _onTap(context, TapZone.clock),
                     ),
-                    // Kamera/Scan (rechts, etwas höher) — Kamera-Scan
+                    // Kamera/Scan (rechts oben, an der Lampe) — Kamera-Scan
                     _TapZone(
                       zone: TapZone.camera,
-                      left: w * 0.85,
-                      top: h * 0.80,
-                      width: w * 0.08,
-                      height: h * 0.08,
+                      left: w * 0.84,
+                      top: h * 0.29,
+                      width: w * 0.16,
+                      height: h * 0.30,
                       onTap: () => _onTap(context, TapZone.camera),
                     ),
                   ],

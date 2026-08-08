@@ -315,9 +315,13 @@ class TtsService {
 
   /// Speaks a single string of text with natural modulation.
   ///
-  /// Splits the text into sentences and varies pitch/speed per sentence to
-  /// break monotony: questions rise, exclamations emphasize, dialogue gets a
-  /// different tone, narration stays calm. This mimics human modulation.
+  /// Splits the text into sentences and clauses, then varies pitch, speed and
+  /// volume per clause to mimic human expression:
+  ///  - Main clauses: louder, faster (emphasis)
+  ///  - Subordinate clauses (after comma): quieter, slower
+  ///  - Questions rise, exclamations emphasize
+  ///  - Emotional undertones: enumeration (wistful), prologue (thoughtful),
+  ///    joyful passages (brighter)
   Future<void> speak(String text) async {
     await stop();
     _currentText = text;
@@ -328,11 +332,11 @@ class TtsService {
 
     _speechCompleter = Completer<void>();
 
-    // Aufteilen in Sätze mit Modulation
+    // Aufteilen in Sätze
     final sentences = _splitSentences(text);
-    for (final sentence in sentences) {
+    for (int i = 0; i < sentences.length; i++) {
       if (_state == TtsState.stopped) break;
-      await _speakWithModulation(sentence);
+      await _speakSentence(sentences[i], i, sentences.length);
     }
 
     _state = TtsState.stopped;
@@ -343,50 +347,128 @@ class TtsService {
 
   /// Splits text into sentences, keeping the punctuation.
   List<String> _splitSentences(String text) {
-    // Splitte an . ! ? gefolgt von Leerzeichen/Zeilenumbruch, behalte das Zeichen
     final parts = text.split(RegExp(r'(?<=[.!?])\s+'));
     return parts.where((p) => p.trim().isNotEmpty).toList();
   }
 
-  /// Speaks a single sentence with pitch/speed modulation based on its type.
-  Future<void> _speakWithModulation(String sentence) async {
+  /// Speaks a sentence, splitting it into clauses with dynamic modulation.
+  Future<void> _speakSentence(String sentence, int index, int total) async {
     final trimmed = sentence.trim();
     if (trimmed.isEmpty) return;
 
-    // Bestimme Satztyp für Modulation
+    // Satztyp bestimmen
     final lastChar = trimmed.isNotEmpty ? trimmed[trimmed.length - 1] : '.';
     final isQuestion = lastChar == '?';
     final isExclamation = lastChar == '!';
     final isDialogue = trimmed.startsWith('"') || trimmed.startsWith('„') ||
         trimmed.startsWith('»') || trimmed.contains('"') && trimmed.length < 120;
 
-    double pitch;
-    double speed;
+    // Emotionale Untertöne erkennen
+    final undertone = _detectUndertone(trimmed, index, total);
 
+    // In Klauseln aufteilen (an Kommas)
+    final clauses = _splitClauses(trimmed);
+
+    for (int c = 0; c < clauses.length; c++) {
+      if (_state == TtsState.stopped) break;
+      final isMainClause = c == 0; // erste Klausel = Hauptsatz
+      await _speakClause(
+        clauses[c],
+        isMainClause: isMainClause,
+        isQuestion: isQuestion,
+        isExclamation: isExclamation,
+        isDialogue: isDialogue,
+        undertone: undertone,
+      );
+    }
+  }
+
+  /// Splits a sentence into clauses at commas (keeping the comma).
+  List<String> _splitClauses(String sentence) {
+    final parts = sentence.split(RegExp(r'(?<=,)\s*'));
+    return parts.where((p) => p.trim().isNotEmpty).toList();
+  }
+
+  /// Detects the emotional undertone of a sentence.
+  _Undertone _detectUndertone(String text, int index, int total) {
+    // Prolog: erste Sätze, nachdenklich
+    if (index == 0) return _Undertone.thoughtful;
+    // Aufzählung: viele Kommas, wehmütig
+    final commaCount = '${text}'.split(',').length - 1;
+    if (commaCount >= 3) return _Undertone.wistful;
+    // Freudige Wörter
+    final joyfulWords = ['freude', 'glück', 'lachen', 'herrlich', 'wunderbar',
+        'schön', 'fröhlich', 'lustig', 'vergnügen', 'triumph'];
+    final lower = text.toLowerCase();
+    if (joyfulWords.any((w) => lower.contains(w))) return _Undertone.joyful;
+    return _Undertone.neutral;
+  }
+
+  /// Speaks a single clause with the appropriate modulation.
+  Future<void> _speakClause(
+    String clause, {
+    required bool isMainClause,
+    required bool isQuestion,
+    required bool isExclamation,
+    required bool isDialogue,
+    required _Undertone undertone,
+  }) async {
+    final trimmed = clause.trim();
+    if (trimmed.isEmpty) return;
+
+    double pitch = _pitch;
+    double speed = _speed;
+    double volume = _volume;
+
+    // Basis-Modulation nach Satztyp
     if (isQuestion) {
-      // Fragen steigen am Ende — höhere Tonlage, etwas langsamer
-      pitch = _pitch * 1.15;
-      speed = _speed * 0.95;
+      pitch *= 1.15;
+      speed *= 0.95;
     } else if (isExclamation) {
-      // Ausrufe betont — höhere Tonlage, etwas schneller
-      pitch = _pitch * 1.1;
-      speed = _speed * 1.05;
+      pitch *= 1.1;
+      speed *= 1.05;
     } else if (isDialogue) {
-      // Dialoge — leicht höher, etwas schneller (lebendiger)
-      pitch = _pitch * 1.08;
-      speed = _speed * 1.02;
+      pitch *= 1.08;
+      speed *= 1.02;
+    }
+
+    // Klausel-Modulation: Hauptsatz lauter/schneller, Nebensatz leiser/langsamer
+    if (isMainClause) {
+      volume *= 1.1;
+      speed *= 1.05;
     } else {
-      // Erzählung — ruhig, tiefer, langsamer
-      pitch = _pitch * 0.95;
-      speed = _speed * 0.98;
+      volume *= 0.8;
+      speed *= 0.92;
+      pitch *= 0.97;
+    }
+
+    // Emotionale Untertöne
+    switch (undertone) {
+      case _Undertone.thoughtful:
+        speed *= 0.9;
+        volume *= 0.9;
+        pitch *= 0.95;
+        break;
+      case _Undertone.wistful:
+        speed *= 0.88;
+        volume *= 0.85;
+        pitch *= 0.9;
+        break;
+      case _Undertone.joyful:
+        speed *= 1.08;
+        volume *= 1.05;
+        pitch *= 1.1;
+        break;
+      case _Undertone.neutral:
+        break;
     }
 
     // Wende Modulation an
     await _flutterTts.setPitch(pitch.clamp(0.5, 2.0));
     await _flutterTts.setSpeechRate(speed.clamp(0.25, 2.0));
+    await _flutterTts.setVolume(volume.clamp(0.0, 1.0));
 
-    // Warte bis der Satz fertig gesprochen ist, bevor der nächste kommt.
-    // flutter_tts.speak() ist asynchron — wir warten auf den Completion-Handler.
+    // Warte bis die Klausel fertig gesprochen ist
     final completer = Completer<void>();
     _speechCompleter = completer;
     await _flutterTts.speak(trimmed);
@@ -591,3 +673,6 @@ class TtsService {
     _flutterTts.setCancelHandler(() {});
   }
 }
+
+/// Emotional undertone for a sentence, used to modulate the voice.
+enum _Undertone { neutral, thoughtful, wistful, joyful }
