@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:flutter/services.dart' show rootBundle;
@@ -11,9 +12,15 @@ class PiperTtsService {
   OfflineTts? _tts;
   bool _initialized = false;
   String? _error;
+  String _modelPath = '';
+  String _tokensPath = '';
+  String _dataDir = '';
 
   bool get isInitialized => _initialized;
   String? get error => _error;
+  String get modelPath => _modelPath;
+  String get tokensPath => _tokensPath;
+  String get dataDir => _dataDir;
 
   /// Kopiert die Modell-Dateien aus den Assets in den App-Speicher.
   Future<String> _copyAssetToFile(String assetPath, String destPath) async {
@@ -44,6 +51,8 @@ class PiperTtsService {
         'assets/piper/tokens.txt',
         '${piperDir.path}/tokens.txt',
       );
+      _modelPath = modelPath;
+      _tokensPath = tokensPath;
 
       // espeak-ng-Daten kopieren
       final espeakDir = Directory('${piperDir.path}/espeak-ng-data');
@@ -72,6 +81,7 @@ class PiperTtsService {
         'assets/piper/espeak-ng-data/voices/de',
         '${voicesDir.path}/de',
       );
+      _dataDir = espeakDir.path;
 
       // sherpa_onnx initialisieren
       initBindings();
@@ -149,4 +159,37 @@ class PiperTtsService {
     _tts = null;
     _initialized = false;
   }
+}
+
+/// Führt die Piper-Synthese in einem separaten Isolate aus, damit der
+/// UI-Thread nicht blockiert wird (verhindert ANR/Crash bei langen Sätzen).
+/// Gibt [samples, sampleRate] zurück oder null bei Fehler.
+Future<List<double>?> synthesizeInIsolate({
+  required String modelPath,
+  required String tokensPath,
+  required String dataDir,
+  required String text,
+  required double speed,
+}) {
+  return Isolate.run(() {
+    try {
+      initBindings();
+      final tts = OfflineTts(OfflineTtsConfig(
+        model: OfflineTtsModelConfig(
+          vits: OfflineTtsVitsModelConfig(
+            model: modelPath,
+            tokens: tokensPath,
+            dataDir: dataDir,
+            lengthScale: 1.0,
+          ),
+        ),
+      ));
+      final audio = tts.generate(text: text, speed: speed);
+      tts.free();
+      if (audio.samples.isEmpty) return null;
+      return audio.samples.toList();
+    } catch (e) {
+      return null;
+    }
+  });
 }

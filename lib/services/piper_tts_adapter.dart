@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
@@ -48,6 +49,8 @@ class PiperTtsAdapter {
   }
 
   /// Spricht den Text mit Piper und spielt das Audio ab.
+  /// Die Synthese läuft in einem Isolate, damit der UI-Thread nicht blockiert
+  /// wird (verhindert ANR/Crash bei langen Sätzen).
   Future<void> speak(String text) async {
     await stop();
     if (!_initialized) {
@@ -68,13 +71,21 @@ class PiperTtsAdapter {
 
     for (final sentence in sentences) {
       if (!_isPlaying) break;
-      final audio = _piper.synthesize(sentence, speed: _speed);
-      if (audio == null || audio.samples.isEmpty) continue;
+
+      // Synthese im Isolate (blockiert den UI-Thread nicht)
+      final samples = await synthesizeInIsolate(
+        modelPath: _piper.modelPath,
+        tokensPath: _piper.tokensPath,
+        dataDir: _piper.dataDir,
+        text: sentence,
+        speed: _speed,
+      );
+      if (samples == null || samples.isEmpty) continue;
 
       // WAV in Temp-Datei schreiben und abspielen
       final dir = await getTemporaryDirectory();
       final wavPath = '${dir.path}/piper_tts_${DateTime.now().millisecondsSinceEpoch}.wav';
-      await _piper.saveWav(audio, wavPath);
+      await _writeWav(samples, 22050, wavPath);
 
       await _player.stop();
       await _player.play(DeviceFileSource(wavPath));
@@ -87,6 +98,35 @@ class PiperTtsAdapter {
     _isPlaying = false;
     _completion?.complete();
     _completion = null;
+  }
+
+  /// Schreibt Float32-Samples als 16-bit PCM WAV-Datei.
+  Future<void> _writeWav(List<double> samples, int sampleRate, String path) async {
+    final bytes = ByteData(44 + samples.length * 2);
+    void writeString(int offset, String s) {
+      for (int i = 0; i < s.length; i++) {
+        bytes.setUint8(offset + i, s.codeUnitAt(i));
+      }
+    }
+    writeString(0, 'RIFF');
+    bytes.setUint32(4, 36 + samples.length * 2, Endian.little);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    bytes.setUint32(16, 16, Endian.little);
+    bytes.setUint16(20, 1, Endian.little);
+    bytes.setUint16(22, 1, Endian.little);
+    bytes.setUint32(24, sampleRate, Endian.little);
+    bytes.setUint32(28, sampleRate * 2, Endian.little);
+    bytes.setUint16(32, 2, Endian.little);
+    bytes.setUint16(34, 16, Endian.little);
+    writeString(36, 'data');
+    bytes.setUint32(40, samples.length * 2, Endian.little);
+    for (int i = 0; i < samples.length; i++) {
+      final s = (samples[i] * 32767).clamp(-32768, 32767).toInt();
+      bytes.setInt16(44 + i * 2, s, Endian.little);
+    }
+    final file = File(path);
+    await file.writeAsBytes(bytes.buffer.asUint8List(), flush: true);
   }
 
   /// Pausiert die Wiedergabe.

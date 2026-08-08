@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemSound, SystemSoundType;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -22,6 +25,9 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  Timer? _countdownTimer;
+  int _remainingSeconds = 0;
+
   @override
   void initState() {
     super.initState();
@@ -29,6 +35,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     super.dispose();
   }
 
@@ -195,26 +202,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// Starts a countdown reading timer and shows a snackbar when done.
+  /// Starts a countdown reading timer with live display and sound signal.
   void _startReadingTimer(int minutes) {
-    final duration = Duration(minutes: minutes);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Lese-Timer gestartet: $minutes Minuten'),
-        duration: const Duration(seconds: 2),
+    _countdownTimer?.cancel();
+    _remainingSeconds = minutes * 60;
+
+    // Live-Countdown-Dialog anzeigen
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _CountdownDialog(
+        getRemaining: () => _remainingSeconds,
+        onClose: () {
+          _countdownTimer?.cancel();
+        },
       ),
     );
-    // Countdown im Hintergrund
-    Future.delayed(duration, () {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('⏰ Lese-Session beendet! Gut gemacht.'),
-            duration: Duration(seconds: 4),
-          ),
-        );
+
+    // Countdown jede Sekunde
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds > 0) {
+        _remainingSeconds--;
+      }
+      if (_remainingSeconds <= 0) {
+        timer.cancel();
+        // Ton-Signal abspielen
+        _playTimerSignal();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('⏰ Lese-Session beendet! Gut gemacht.'),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
       }
     });
+  }
+
+  /// Spielt ein kurzes Signal-Ton ab (über SystemSound).
+  void _playTimerSignal() {
+    SystemSound.play(SystemSoundType.alert);
   }
 
   @override
@@ -243,11 +271,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
 
           // ── Interaktive Tap-Zonen ──
-          // Positionen basierend auf präziser Bildanalyse (GPT-4o-mini, in %):
-          //  Kamin: (10,70)-(35,100) | Bücherregal: (0,20)-(40,80)
-          //  Katze: (40,55)-(60,70)  | Sessel: (30,50)-(60,90)
-          //  Kaffeetasse: (65,75)-(75,85) | Lampe: (70,50)-(80,70)
-          //  Fenster: (40,10)-(100,30) | Tisch: (60,70)-(90,90)
+          // Aufteilung in Arbeitsbereiche nach Nutzer-Vorgabe:
+          //  Links oben: Kaminzimmer (Kamin) + Bibliothek (verkleinert)
+          //  Rechts oben: Kamera-Scan + Timer
+          //  Rechts unten: Kaffeespenden + Butler + Settings
           Positioned.fill(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -255,7 +282,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final h = constraints.maxHeight;
                 return Stack(
                   children: [
-                    // Kamin (links unten) — Kaminzimmer / Piper Vorlesen
+                    // Kaminzimmer — auf dem Kamin (links unten)
                     _TapZone(
                       zone: TapZone.fireplace,
                       left: w * 0.10,
@@ -264,58 +291,58 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       height: h * 0.30,
                       onTap: () => _onTap(context, TapZone.fireplace),
                     ),
-                    // Bücherregal (links) — Bibliothek
+                    // Bibliothek — links oben, zentral, um 3/4 verkleinert
                     _TapZone(
                       zone: TapZone.books,
-                      left: w * 0.0,
-                      top: h * 0.20,
-                      width: w * 0.40,
-                      height: h * 0.60,
+                      left: w * 0.05,
+                      top: h * 0.25,
+                      width: w * 0.10,
+                      height: h * 0.15,
                       onTap: () => _onTap(context, TapZone.books),
                     ),
-                    // Sessel (mittig) — Einstellungen
+                    // Settings — rechts unten, unterhalb Butler
                     _TapZone(
                       zone: TapZone.armchair,
-                      left: w * 0.30,
-                      top: h * 0.50,
-                      width: w * 0.30,
-                      height: h * 0.40,
+                      left: w * 0.60,
+                      top: h * 0.72,
+                      width: w * 0.20,
+                      height: h * 0.13,
                       onTap: () => _onTap(context, TapZone.armchair),
                     ),
-                    // Kaffeetasse (rechts unten) — Caffè
+                    // Kaffeespenden — rechts unten, rechte obere Ecke
                     _TapZone(
                       zone: TapZone.coffee,
-                      left: w * 0.65,
-                      top: h * 0.75,
-                      width: w * 0.10,
+                      left: w * 0.72,
+                      top: h * 0.58,
+                      width: w * 0.12,
                       height: h * 0.10,
                       onTap: () => _onTap(context, TapZone.coffee),
                     ),
-                    // Katze (auf dem Sessel) — Butler — ganz oben im Stack
+                    // Butler — links neben Kaffee, mit Abstand (auf der Katze)
                     _TapZone(
                       zone: TapZone.cat,
-                      left: w * 0.40,
+                      left: w * 0.48,
                       top: h * 0.55,
-                      width: w * 0.20,
-                      height: h * 0.15,
+                      width: w * 0.18,
+                      height: h * 0.13,
                       onTap: () => _onTap(context, TapZone.cat),
                     ),
-                    // Fenster (oben) — Timer
+                    // Timer — rechts oben, dezentral, leicht nach links unten
                     _TapZone(
                       zone: TapZone.clock,
-                      left: w * 0.40,
-                      top: h * 0.10,
-                      width: w * 0.60,
-                      height: h * 0.20,
+                      left: w * 0.50,
+                      top: h * 0.12,
+                      width: w * 0.18,
+                      height: h * 0.15,
                       onTap: () => _onTap(context, TapZone.clock),
                     ),
-                    // Lampe (rechts mittig) — Kamera-Scan
+                    // Kamera-Scan — rechts oben, rechte untere Ecke
                     _TapZone(
                       zone: TapZone.camera,
-                      left: w * 0.70,
-                      top: h * 0.50,
-                      width: w * 0.10,
-                      height: h * 0.20,
+                      left: w * 0.78,
+                      top: h * 0.30,
+                      width: w * 0.12,
+                      height: h * 0.15,
                       onTap: () => _onTap(context, TapZone.camera),
                     ),
                   ],
@@ -481,6 +508,86 @@ class _ChoiceButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Live-Countdown-Dialog für den Lese-Timer.
+class _CountdownDialog extends StatefulWidget {
+  final int Function() getRemaining;
+  final VoidCallback onClose;
+
+  const _CountdownDialog({
+    required this.getRemaining,
+    required this.onClose,
+  });
+
+  @override
+  State<_CountdownDialog> createState() => _CountdownDialogState();
+}
+
+class _CountdownDialogState extends State<_CountdownDialog> {
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    // Aktualisiert die Anzeige jede Sekunde
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  String _format(int seconds) {
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining = widget.getRemaining();
+    final done = remaining <= 0;
+    return AlertDialog(
+      backgroundColor: const Color(0xFF3E2723),
+      title: Text(
+        done ? 'Fertig!' : 'Lese-Timer',
+        style: const TextStyle(color: Color(0xFFFFE0B2)),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            done ? '⏰ Zeit vorbei!' : _format(remaining),
+            style: const TextStyle(
+              color: Color(0xFFFFB74D),
+              fontSize: 56,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            done ? 'Gut gemacht!' : 'Noch ${_format(remaining)} übrig',
+            style: const TextStyle(color: Color(0xFFD7CCC8)),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            widget.onClose();
+            Navigator.pop(context);
+          },
+          child: const Text('Schließen',
+              style: TextStyle(color: Color(0xFFFFB74D))),
+        ),
+      ],
     );
   }
 }
