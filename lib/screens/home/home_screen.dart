@@ -243,10 +243,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
 
           // ── Interaktive Tap-Zonen ──
-          // Positionen basierend auf Bildanalyse des neuen Lesezimmer-Bilds (in %):
-          //  Bücherregal: (0,0)-(40,90) | Kamin: (10,60)-(30,90)
-          //  Sessel: (40,60)-(70,90)    | Katze: (40,70)-(60,80)
-          //  Kaffeetasse: (70,70)-(80,80) | Lampe/Fenster: (60,20)-(80,40)
+          // Positionen basierend auf Bildanalyse (GPT-4o-mini, in %):
+          //  Kamin: (10,60)-(30,90) | Bücherregal: (0,30)-(30,60)
+          //  Katze: (50,65)-(65,80) | Sessel: (45,55)-(80,90)
+          //  Kaffeetasse: (75,65)-(85,75) | Lampe: (75,50)-(85,65)
+          //  Fenster: (30,0)-(70,30) | Tisch: (60,70)-(80,90)
           Positioned.fill(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -254,38 +255,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final h = constraints.maxHeight;
                 return Stack(
                   children: [
-                    // Kaminzimmer — auf den Büchern (links)
+                    // Kamin (links unten) — Piper TTS Vorlesen
                     _TapZone(
                       zone: TapZone.fireplace,
-                      left: w * 0.0,
-                      top: h * 0.0,
-                      width: w * 0.40,
-                      height: h * 0.90,
-                      onTap: () => _onTap(context, TapZone.fireplace),
-                    ),
-                    // Bibliothek — auf dem Kamin (links unten)
-                    _TapZone(
-                      zone: TapZone.books,
                       left: w * 0.10,
                       top: h * 0.60,
                       width: w * 0.20,
+                      height: h * 0.30,
+                      onTap: () => _onTap(context, TapZone.fireplace),
+                    ),
+                    // Bücherregal (links) — Bibliothek
+                    _TapZone(
+                      zone: TapZone.books,
+                      left: w * 0.0,
+                      top: h * 0.30,
+                      width: w * 0.30,
                       height: h * 0.30,
                       onTap: () => _onTap(context, TapZone.books),
                     ),
                     // Sessel (rechts) — Einstellungen
                     _TapZone(
                       zone: TapZone.armchair,
-                      left: w * 0.40,
-                      top: h * 0.60,
-                      width: w * 0.30,
-                      height: h * 0.30,
+                      left: w * 0.45,
+                      top: h * 0.55,
+                      width: w * 0.35,
+                      height: h * 0.35,
                       onTap: () => _onTap(context, TapZone.armchair),
                     ),
                     // Kaffeetasse (rechts unten) — Caffè
                     _TapZone(
                       zone: TapZone.coffee,
-                      left: w * 0.70,
-                      top: h * 0.70,
+                      left: w * 0.75,
+                      top: h * 0.65,
                       width: w * 0.10,
                       height: h * 0.10,
                       onTap: () => _onTap(context, TapZone.coffee),
@@ -293,28 +294,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     // Katze (auf dem Sessel) — Butler — ganz oben im Stack
                     _TapZone(
                       zone: TapZone.cat,
-                      left: w * 0.40,
-                      top: h * 0.70,
-                      width: w * 0.20,
-                      height: h * 0.10,
+                      left: w * 0.50,
+                      top: h * 0.65,
+                      width: w * 0.15,
+                      height: h * 0.15,
                       onTap: () => _onTap(context, TapZone.cat),
                     ),
-                    // Timer — im Fenster/Lampe (oben)
+                    // Fenster (oben) — Timer
                     _TapZone(
                       zone: TapZone.clock,
-                      left: w * 0.60,
-                      top: h * 0.20,
-                      width: w * 0.20,
-                      height: h * 0.20,
+                      left: w * 0.30,
+                      top: h * 0.0,
+                      width: w * 0.40,
+                      height: h * 0.30,
                       onTap: () => _onTap(context, TapZone.clock),
                     ),
-                    // Kamera/Scan (rechts oben) — Kamera-Scan
+                    // Lampe (rechts oben) — Kamera-Scan
                     _TapZone(
                       zone: TapZone.camera,
-                      left: w * 0.80,
-                      top: h * 0.0,
-                      width: w * 0.20,
-                      height: h * 0.20,
+                      left: w * 0.75,
+                      top: h * 0.50,
+                      width: w * 0.10,
+                      height: h * 0.15,
                       onTap: () => _onTap(context, TapZone.camera),
                     ),
                   ],

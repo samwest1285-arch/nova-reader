@@ -6,7 +6,7 @@ import 'package:audioplayers/audioplayers.dart';
 
 import '../../theme/app_theme.dart';
 import '../../providers/settings_provider.dart';
-import '../../services/tts_service.dart';
+import '../../services/piper_tts_adapter.dart';
 
 /// The cozy fireplace reading room with animated flames, TTS, and ambient sounds.
 class FireplaceScreen extends ConsumerStatefulWidget {
@@ -30,7 +30,7 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
   int _currentChapter = 0;
   String _selectedVoice = 'Erzähler (tief)';
   AmbientSound _selectedSound = AmbientSound.fire;
-  final TtsService _tts = TtsService();
+  final PiperTtsAdapter _tts = PiperTtsAdapter();
   final AudioPlayer _ambientPlayer = AudioPlayer();
 
   final List<String> _voices = [
@@ -85,8 +85,8 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
       _flameParticles.add(_FlameParticle());
     }
 
-    // Lade echte deutsche Systemstimmen für natürlicheren Klang
-    _tts.loadAndSelectGermanVoices();
+    // Piper TTS initialisieren (lädt das deutsche Modell im Hintergrund)
+    _tts.init();
 
     // Update particles periodically
     _particleTimer = Timer.periodic(const Duration(milliseconds: 50), (_) {
@@ -217,70 +217,30 @@ class _FireplaceScreenState extends ConsumerState<FireplaceScreen>
   }
 
   /// Applies the selected voice profile to the TTS service.
+  /// Piper hat eine feste deutsche Stimme — wir variieren nur die
+  /// Geschwindigkeit leicht, um verschiedene "Charaktere" zu unterscheiden.
   Future<void> _applyVoice(String voice) async {
     switch (voice) {
       case 'Erzähler (tief)':
-        await _tts.setVoiceProfile(const VoiceProfile(
-          name: 'Narrator',
-          language: 'de-DE',
-          voiceId: '',
-          defaultSpeed: 0.7,
-          defaultPitch: 0.9,
-        ));
+        await _tts.setSpeed(0.7);
         break;
       case 'Erzählerin (warm)':
-        await _tts.setVoiceProfile(const VoiceProfile(
-          name: 'Narrator Female',
-          language: 'de-DE',
-          voiceId: '',
-          defaultSpeed: 0.7,
-          defaultPitch: 1.15,
-        ));
+        await _tts.setSpeed(0.7);
         break;
       case 'Alter Weiser':
-        await _tts.setVoiceProfile(const VoiceProfile(
-          name: 'Wise Sage',
-          language: 'de-DE',
-          voiceId: '',
-          defaultSpeed: 0.65,
-          defaultPitch: 0.7,
-        ));
+        await _tts.setSpeed(0.6);
         break;
       case 'Junge Heldin':
-        await _tts.setVoiceProfile(const VoiceProfile(
-          name: 'Young Heroine',
-          language: 'de-DE',
-          voiceId: '',
-          defaultSpeed: 0.75,
-          defaultPitch: 1.3,
-        ));
+        await _tts.setSpeed(0.8);
         break;
       case 'Butler (Jeeves)':
-        await _tts.setVoiceProfile(const VoiceProfile(
-          name: 'Butler',
-          language: 'de-DE',
-          voiceId: '',
-          defaultSpeed: 0.7,
-          defaultPitch: 0.9,
-        ));
+        await _tts.setSpeed(0.7);
         break;
       case 'Flüsternd':
-        await _tts.setVoiceProfile(const VoiceProfile(
-          name: 'Whisper',
-          language: 'de-DE',
-          voiceId: '',
-          defaultSpeed: 0.6,
-          defaultPitch: 1.1,
-        ));
+        await _tts.setSpeed(0.6);
         break;
       default:
-        await _tts.setVoiceProfile(const VoiceProfile(
-          name: 'Narrator',
-          language: 'de-DE',
-          voiceId: '',
-          defaultSpeed: 0.7,
-          defaultPitch: 1.0,
-        ));
+        await _tts.setSpeed(0.7);
     }
   }
 
